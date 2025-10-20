@@ -23,15 +23,16 @@ export default function Login() {
   const { login } = useAuth();
 
   // Theme variables for easy maintenance
+  // In Login.jsx, replace the theme object:
   const theme = {
-    primary: "var(--primary-color)",
-    primaryDark: "var(--primary-dark)",
-    primaryLight: "var(--primary-light)",
-    textPrimary: "var(--text-primary)",
-    textSecondary: "var(--text-secondary)",
-    backgroundLight: "var(--background-light)",
-    backgroundWhite: "var(--background-white)",
-    borderColor: "var(--border-color)",
+    primary: "#2d5a27", // Your primary color
+    primaryDark: "#1f3d1a", // Your primary dark
+    primaryLight: "#336C35", // Your primary light
+    textPrimary: "#1a2a1a", // Your text primary
+    textSecondary: "#4a5c4a", // Your text secondary
+    backgroundLight: "#f8faf8", // Your background light
+    backgroundWhite: "#ffffff", // Your background white
+    borderColor: "#e0e6e0", // Your border color
   };
 
   const handleSubmit = async (e) => {
@@ -162,7 +163,7 @@ export default function Login() {
                 className="fw-bolder text-start"
                 style={{
                   fontSize: "9px",
-                  color: theme.textPrimary,
+                  color: theme.primary, // Changed from theme.textPrimary to theme.primary
                   margin: 0,
                   lineHeight: "1.2",
                 }}
@@ -179,7 +180,7 @@ export default function Login() {
           style={{
             marginTop: "2rem",
             marginBottom: "2rem",
-            color: theme.textPrimary,
+            color: theme.primary, // Changed from theme.textPrimary to theme.primary
           }}
         >
           Log in to your account
@@ -264,7 +265,7 @@ export default function Login() {
             <a
               href="#"
               className="text-decoration-none small fw-semibold"
-              style={{ color: theme.textPrimary }}
+              style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
               onClick={handleForgotPassword}
             >
               Forgot password?
@@ -290,13 +291,13 @@ export default function Login() {
           {/* Register Link */}
           <p
             className="text-center mt-3 small fw-semibold"
-            style={{ color: "#2d5a27" }}
+            style={{ color: theme.primary }} // Changed from hardcoded color to theme.primary
           >
             Don't have an account?{" "}
             <Link
               to="/register"
               className="fw-bold"
-              style={{ color: "#2d5a27" }}
+              style={{ color: theme.primary }} // Changed from hardcoded color to theme.primary
             >
               Register here
             </Link>
@@ -306,4 +307,3 @@ export default function Login() {
     </div>
   );
 }
-    

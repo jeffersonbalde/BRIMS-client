@@ -49,27 +49,28 @@ export default function Register() {
     setIsMounted(true);
   }, []);
 
+  // In Register.jsx, replace the theme object:
   const theme = {
-    primary: "var(--primary-color)",
-    textPrimary: "var(--text-primary)",
-    textSecondary: "var(--text-secondary)",
-    inputBg: "var(--input-bg)",
-    inputText: "var(--input-text)",
-    inputBorder: "var(--input-border)",
+    primary: "#2d5a27", // Your primary color
+    textPrimary: "#1a2a1a", // Your text primary
+    textSecondary: "#4a5c4a", // Your text secondary
+    inputBg: "#f8faf8", // Your input background
+    inputText: "#1a2a1a", // Your input text
+    inputBorder: "#c8d0c8", // Your input border
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Special handling for contact number - limit to 11 digits
-    if (name === 'contact') {
+    if (name === "contact") {
       // Remove all non-digit characters and limit to 11 digits
-      const digitsOnly = value.replace(/\D/g, '').slice(0, 11);
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 11);
       setForm((prev) => ({ ...prev, [name]: digitsOnly }));
-      
+
       // Clear error for this field when user starts typing
       if (fieldErrors[name]) {
-        setFieldErrors(prev => ({ ...prev, [name]: '' }));
+        setFieldErrors((prev) => ({ ...prev, [name]: "" }));
       }
 
       // Check for duplicates
@@ -78,14 +79,14 @@ export default function Register() {
       }
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
-      
+
       // Clear error for this field when user starts typing
       if (fieldErrors[name]) {
-        setFieldErrors(prev => ({ ...prev, [name]: '' }));
+        setFieldErrors((prev) => ({ ...prev, [name]: "" }));
       }
 
       // Check for duplicates in real-time for specific fields
-      if (['email', 'barangayName', 'name'].includes(name)) {
+      if (["email", "barangayName", "name"].includes(name)) {
         checkDuplicate(name, value);
       }
     }
@@ -94,7 +95,7 @@ export default function Register() {
   const checkDuplicate = async (field, value) => {
     if (!value || value.length < 2) return;
 
-    setCheckingDuplicates(prev => ({ ...prev, [field]: true }));
+    setCheckingDuplicates((prev) => ({ ...prev, [field]: true }));
 
     try {
       const response = await fetch(
@@ -119,14 +120,14 @@ export default function Register() {
       const data = await response.json();
 
       if (data.exists) {
-        setFieldErrors(prev => ({ ...prev, [field]: data.message }));
+        setFieldErrors((prev) => ({ ...prev, [field]: data.message }));
       } else {
-        setFieldErrors(prev => ({ ...prev, [field]: '' }));
+        setFieldErrors((prev) => ({ ...prev, [field]: "" }));
       }
     } catch (error) {
-      console.error('Duplicate check error:', error);
+      console.error("Duplicate check error:", error);
     } finally {
-      setCheckingDuplicates(prev => ({ ...prev, [field]: false }));
+      setCheckingDuplicates((prev) => ({ ...prev, [field]: false }));
     }
   };
 
@@ -138,7 +139,10 @@ export default function Register() {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        showAlert.error("Invalid File", "Please select an image file (JPEG, PNG, etc.)");
+        showAlert.error(
+          "Invalid File",
+          "Please select an image file (JPEG, PNG, etc.)"
+        );
         return;
       }
 
@@ -154,7 +158,7 @@ export default function Register() {
         setAvatarPreview(e.target.result);
       };
       reader.readAsDataURL(file);
-      
+
       showToast.success("Avatar uploaded successfully");
     }
   };
@@ -166,7 +170,7 @@ export default function Register() {
       "Yes, Remove",
       "Keep It"
     );
-    
+
     if (result.isConfirmed) {
       setAvatarPreview(null);
       setAvatarFile(null);
@@ -223,7 +227,7 @@ export default function Register() {
     }
 
     // Check for duplicate errors
-    Object.keys(fieldErrors).forEach(key => {
+    Object.keys(fieldErrors).forEach((key) => {
       if (fieldErrors[key]) {
         errors[key] = fieldErrors[key];
       }
@@ -281,18 +285,19 @@ export default function Register() {
       if (response.ok) {
         // Store token and user data
         localStorage.setItem("access_token", data.access_token);
-        
+
         // Update auth context by manually logging in the user
         // This ensures the auth state is updated throughout the app
         const loginResult = await login(form.email, form.password);
-        
+
         if (loginResult.success) {
           // Show success message with approval notice
           await showAlert.success(
             "Registration Successful!",
-            data.message || "Your account has been created successfully. You can now access the dashboard but will have limited access until admin approval."
+            data.message ||
+              "Your account has been created successfully. You can now access the dashboard but will have limited access until admin approval."
           );
-          
+
           // Redirect to dashboard
           navigate("/dashboard", { replace: true });
         } else {
@@ -312,13 +317,17 @@ export default function Register() {
           const firstError = Object.values(data.errors).flat()[0];
           showAlert.error("Registration Failed", firstError);
         } else {
-          showAlert.error("Registration Failed", data.message || "There was an error creating your account. Please try again.");
+          showAlert.error(
+            "Registration Failed",
+            data.message ||
+              "There was an error creating your account. Please try again."
+          );
         }
       }
     } catch (error) {
       showAlert.close();
       showAlert.error(
-        "Network Error", 
+        "Network Error",
         "Unable to connect to the server. Please check your internet connection and try again."
       );
       console.error("Registration error:", error);
@@ -329,27 +338,30 @@ export default function Register() {
 
   const getFieldStatus = (fieldName) => {
     if (checkingDuplicates[fieldName]) {
-      return 'checking';
+      return "checking";
     }
     if (fieldErrors[fieldName]) {
-      return 'error';
+      return "error";
     }
-    if (form[fieldName] && !fieldErrors[fieldName] && 
-        (fieldName !== 'contact' || form.contact.length === 11)) {
-      return 'success';
+    if (
+      form[fieldName] &&
+      !fieldErrors[fieldName] &&
+      (fieldName !== "contact" || form.contact.length === 11)
+    ) {
+      return "success";
     }
-    return 'default';
+    return "default";
   };
 
   const renderFieldIcon = (fieldName) => {
     const status = getFieldStatus(fieldName);
-    
+
     switch (status) {
-      case 'checking':
+      case "checking":
         return <FaSpinner className="spinner" size={14} />;
-      case 'error':
+      case "error":
         return <FaExclamationTriangle className="text-danger" size={14} />;
-      case 'success':
+      case "success":
         return <FaCheck className="text-success" size={14} />;
       default:
         return null;
@@ -358,10 +370,14 @@ export default function Register() {
 
   // Format contact number for display (XXX-XXX-XXXX)
   const formatContact = (value) => {
-    const numbers = value.replace(/\D/g, '');
+    const numbers = value.replace(/\D/g, "");
     if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6) return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(6, 11)}`;
+    if (numbers.length <= 6)
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(
+      6,
+      11
+    )}`;
   };
 
   return (
@@ -419,7 +435,9 @@ export default function Register() {
 
         <div className="min-vh-100 d-flex align-items-center justify-content-center p-3 p-lg-4">
           <div
-            className={`bg-white rounded-4 shadow-lg p-4 p-sm-5 w-100 form-container ${isMounted ? 'fade-in' : ''}`}
+            className={`bg-white rounded-4 shadow-lg p-4 p-sm-5 w-100 form-container ${
+              isMounted ? "fade-in" : ""
+            }`}
             style={{
               maxWidth: "480px",
               border: "1px solid var(--border-color)",
@@ -431,7 +449,7 @@ export default function Register() {
           >
             <h3
               className="fw-bold text-center mb-2"
-              style={{ color: theme.textPrimary }}
+              style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
             >
               Barangay Account Registration
             </h3>
@@ -444,8 +462,9 @@ export default function Register() {
 
             {/* Approval Notice */}
             <div className="alert alert-info text-center small mb-4">
-              <strong>Note:</strong> Your account will require admin approval. 
-              You can login immediately but will have limited access until approved.
+              <strong>Note:</strong> Your account will require admin approval.
+              You can login immediately but will have limited access until
+              approved.
             </div>
 
             {/* Avatar Upload Section */}
@@ -529,17 +548,23 @@ export default function Register() {
                     placeholder="Full Name"
                     value={form.name}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.name ? 'is-invalid' : ''} ${getFieldStatus('name') === 'success' ? 'is-valid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.name ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("name") === "success" ? "is-valid" : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.name ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.name
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     disabled={isSubmitting}
                   />
                   <span className="input-group-text bg-transparent border-start-0">
-                    {renderFieldIcon('name')}
+                    {renderFieldIcon("name")}
                   </span>
                 </div>
                 {fieldErrors.name && (
@@ -561,17 +586,25 @@ export default function Register() {
                     placeholder="Barangay Name"
                     value={form.barangayName}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.barangayName ? 'is-invalid' : ''} ${getFieldStatus('barangayName') === 'success' ? 'is-valid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.barangayName ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("barangayName") === "success"
+                        ? "is-valid"
+                        : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.barangayName ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.barangayName
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     disabled={isSubmitting}
                   />
                   <span className="input-group-text bg-transparent border-start-0">
-                    {renderFieldIcon('barangayName')}
+                    {renderFieldIcon("barangayName")}
                   </span>
                 </div>
                 {fieldErrors.barangayName && (
@@ -593,11 +626,15 @@ export default function Register() {
                     placeholder="Position / Role"
                     value={form.position}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.position ? 'is-invalid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.position ? "is-invalid" : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.position ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.position
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     disabled={isSubmitting}
@@ -622,17 +659,23 @@ export default function Register() {
                     placeholder="Email Address"
                     value={form.email}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.email ? 'is-invalid' : ''} ${getFieldStatus('email') === 'success' ? 'is-valid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.email ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("email") === "success" ? "is-valid" : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.email ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.email
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     disabled={isSubmitting}
                   />
                   <span className="input-group-text bg-transparent border-start-0">
-                    {renderFieldIcon('email')}
+                    {renderFieldIcon("email")}
                   </span>
                 </div>
                 {fieldErrors.email && (
@@ -654,11 +697,15 @@ export default function Register() {
                     placeholder="Password"
                     value={form.password}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.password ? 'is-invalid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.password ? "is-invalid" : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.password ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.password
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     minLength={8}
@@ -668,10 +715,16 @@ export default function Register() {
                     <button
                       type="button"
                       className="btn btn-sm p-0 border-0 bg-transparent text-muted"
-                      onClick={() => !isSubmitting && setShowPassword(!showPassword)}
+                      onClick={() =>
+                        !isSubmitting && setShowPassword(!showPassword)
+                      }
                       disabled={isSubmitting}
                     >
-                      {showPassword ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                      {showPassword ? (
+                        <FaEyeSlash size={14} />
+                      ) : (
+                        <FaEye size={14} />
+                      )}
                     </button>
                   </span>
                 </div>
@@ -694,11 +747,15 @@ export default function Register() {
                     placeholder="Confirm Password"
                     value={form.confirmPassword}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.confirmPassword ? 'is-invalid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.confirmPassword ? "is-invalid" : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.confirmPassword ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.confirmPassword
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     minLength={8}
@@ -708,10 +765,17 @@ export default function Register() {
                     <button
                       type="button"
                       className="btn btn-sm p-0 border-0 bg-transparent text-muted"
-                      onClick={() => !isSubmitting && setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        !isSubmitting &&
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       disabled={isSubmitting}
                     >
-                      {showConfirmPassword ? <FaEyeSlash size={14} /> : <FaEye size={14} />}
+                      {showConfirmPassword ? (
+                        <FaEyeSlash size={14} />
+                      ) : (
+                        <FaEye size={14} />
+                      )}
                     </button>
                   </span>
                 </div>
@@ -734,18 +798,24 @@ export default function Register() {
                     placeholder="Contact Number (11 digits)"
                     value={formatContact(form.contact)}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.contact ? 'is-invalid' : ''} ${getFieldStatus('contact') === 'success' ? 'is-valid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.contact ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("contact") === "success" ? "is-valid" : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.contact ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.contact
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     maxLength={13} // 11 digits + 2 dashes
                     disabled={isSubmitting}
                   />
                   <span className="input-group-text bg-transparent border-start-0">
-                    {renderFieldIcon('contact')}
+                    {renderFieldIcon("contact")}
                   </span>
                 </div>
                 {fieldErrors.contact && (
@@ -770,11 +840,15 @@ export default function Register() {
                     placeholder="Municipality"
                     value={form.municipality}
                     onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${fieldErrors.municipality ? 'is-invalid' : ''}`}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.municipality ? "is-invalid" : ""
+                    }`}
                     style={{
                       backgroundColor: theme.inputBg,
                       color: theme.inputText,
-                      borderColor: fieldErrors.municipality ? '#dc3545' : theme.inputBorder,
+                      borderColor: fieldErrors.municipality
+                        ? "#dc3545"
+                        : theme.inputBorder,
                     }}
                     required
                     disabled={isSubmitting}
@@ -791,7 +865,10 @@ export default function Register() {
               <button
                 type="submit"
                 className="btn-login w-100 py-2 fw-semibold shadow-sm d-flex align-items-center justify-content-center"
-                disabled={isSubmitting || Object.keys(fieldErrors).some(key => fieldErrors[key])}
+                disabled={
+                  isSubmitting ||
+                  Object.keys(fieldErrors).some((key) => fieldErrors[key])
+                }
               >
                 {isSubmitting ? (
                   <>
@@ -806,13 +883,13 @@ export default function Register() {
               {/* Login Link */}
               <p
                 className="text-center mt-3 small fw-semibold"
-                style={{ color: theme.textPrimary }}
+                style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
               >
                 Already have an account?{" "}
                 <Link
                   to="/"
                   className="fw-bold"
-                  style={{ color: theme.textPrimary }}
+                  style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
                 >
                   Log In
                 </Link>
@@ -855,14 +932,46 @@ export default function Register() {
         }
 
         /* Desktop positions */
-        .floating-1 { top: 15%; left: 8%; animation-delay: 0s; }
-        .floating-2 { top: 20%; right: 10%; animation-delay: 1s; }
-        .floating-3 { bottom: 30%; left: 10%; animation-delay: 2s; }
-        .floating-4 { bottom: 15%; right: 8%; animation-delay: 3s; }
-        .floating-5 { top: 40%; left: 15%; animation-delay: 1.5s; }
-        .floating-6 { top: 35%; right: 15%; animation-delay: 2.5s; }
-        .floating-7 { bottom: 45%; right: 18%; animation-delay: 0.5s; }
-        .floating-8 { top: 65%; left: 12%; animation-delay: 3.5s; }
+        .floating-1 {
+          top: 15%;
+          left: 8%;
+          animation-delay: 0s;
+        }
+        .floating-2 {
+          top: 20%;
+          right: 10%;
+          animation-delay: 1s;
+        }
+        .floating-3 {
+          bottom: 30%;
+          left: 10%;
+          animation-delay: 2s;
+        }
+        .floating-4 {
+          bottom: 15%;
+          right: 8%;
+          animation-delay: 3s;
+        }
+        .floating-5 {
+          top: 40%;
+          left: 15%;
+          animation-delay: 1.5s;
+        }
+        .floating-6 {
+          top: 35%;
+          right: 15%;
+          animation-delay: 2.5s;
+        }
+        .floating-7 {
+          bottom: 45%;
+          right: 18%;
+          animation-delay: 0.5s;
+        }
+        .floating-8 {
+          top: 65%;
+          left: 12%;
+          animation-delay: 3.5s;
+        }
 
         /* Button styles */
         .btn-login {
@@ -890,13 +999,18 @@ export default function Register() {
         }
 
         .btn-login::before {
-          content: '';
+          content: "";
           position: absolute;
           top: 0;
           left: -100%;
           width: 100%;
           height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+          );
           transition: left 0.5s;
         }
 
@@ -930,20 +1044,25 @@ export default function Register() {
 
         /* Animations */
         @keyframes float {
-          0%, 100% { 
+          0%,
+          100% {
             transform: translateY(0px) rotate(0deg) scale(1);
           }
-          33% { 
+          33% {
             transform: translateY(-12px) rotate(4deg) scale(1.05);
           }
-          66% { 
+          66% {
             transform: translateY(8px) rotate(-2deg) scale(0.98);
           }
         }
 
         @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
 
         /* Mobile Responsive */
@@ -951,7 +1070,7 @@ export default function Register() {
           .floating-elements {
             display: none;
           }
-          
+
           .form-container {
             opacity: 1 !important;
             transform: translateY(0) !important;
@@ -970,11 +1089,11 @@ export default function Register() {
             backdrop-filter: none;
             background-color: white !important;
           }
-          
+
           .form-control {
             font-size: 16px;
           }
-          
+
           .input-group-text {
             padding: 0.5rem 0.75rem;
           }
@@ -984,7 +1103,7 @@ export default function Register() {
           .form-container {
             padding: 1.5rem !important;
           }
-          
+
           .input-group-text {
             padding: 0.375rem 0.75rem;
           }
