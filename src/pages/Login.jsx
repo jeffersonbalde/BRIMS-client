@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaEnvelope,
@@ -18,27 +18,32 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
   const navigate = useNavigate();
 
   const { login } = useAuth();
 
   // Theme variables for easy maintenance
-  // In Login.jsx, replace the theme object:
   const theme = {
-    primary: "#2d5a27", // Your primary color
-    primaryDark: "#1f3d1a", // Your primary dark
-    primaryLight: "#336C35", // Your primary light
-    textPrimary: "#1a2a1a", // Your text primary
-    textSecondary: "#4a5c4a", // Your text secondary
-    backgroundLight: "#f8faf8", // Your background light
-    backgroundWhite: "#ffffff", // Your background white
-    borderColor: "#e0e6e0", // Your border color
+    primary: "#2d5a27",
+    primaryDark: "#1f3d1a", 
+    primaryLight: "#336C35",
+    textPrimary: "#1a2a1a",
+    textSecondary: "#4a5c4a",
+    backgroundLight: "#f8faf8",
+    backgroundWhite: "#ffffff",
+    borderColor: "#e0e6e0",
   };
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = LoginBackground;
+    img.onload = () => setBackgroundLoaded(true);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation
     if (!form.email || !form.password) {
       showAlert.error("Validation Error", "Please fill in all fields");
       return;
@@ -47,24 +52,19 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      // Show loading alert
       const loadingAlert = showAlert.loading("Signing you in...");
 
       const result = await login(form.email, form.password);
 
-      // Close loading alert
       showAlert.close();
 
       if (result.success) {
-        // Show success toast
         showToast.success(`Welcome back, ${result.user.name}!`);
 
-        // Small delay before redirect to show the toast
         setTimeout(() => {
           navigate("/dashboard");
         }, 1500);
       } else {
-        // Show error alert for login failures
         showAlert.error(
           "Login Failed",
           result.error || "Please check your credentials and try again."
@@ -97,18 +97,24 @@ export default function Login() {
   };
 
   return (
-    <div
-      className="min-vh-100 d-flex align-items-center justify-content-center"
-      style={{
-        backgroundImage: `url(${LoginBackground})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundColor: theme.backgroundLight,
-      }}
-    >
+    <div className="min-vh-100 d-flex align-items-center justify-content-center position-relative">
+      {/* Background Image with Blur Effect */}
       <div
-        className="bg-white rounded-4 shadow-lg p-4 p-sm-5 w-100 mx-4 mx-sm-0"
+        className="position-absolute top-0 start-0 w-100 h-100"
+        style={{
+          backgroundImage: `url(${LoginBackground})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+          backgroundColor: theme.backgroundLight,
+          filter: backgroundLoaded ? 'blur(0px)' : 'blur(10px)',
+          transition: 'filter 0.5s ease-in-out',
+        }}
+      />
+      
+      {/* Form Content - Always Clear */}
+      <div
+        className="bg-white rounded-4 shadow-lg p-4 p-sm-5 w-100 mx-4 mx-sm-0 position-relative"
         style={{
           maxWidth: "420px",
           border: `1px solid ${theme.borderColor}`,
@@ -163,7 +169,7 @@ export default function Login() {
                 className="fw-bolder text-start"
                 style={{
                   fontSize: "9px",
-                  color: theme.primary, // Changed from theme.textPrimary to theme.primary
+                  color: theme.primary,
                   margin: 0,
                   lineHeight: "1.2",
                 }}
@@ -180,7 +186,7 @@ export default function Login() {
           style={{
             marginTop: "2rem",
             marginBottom: "2rem",
-            color: theme.primary, // Changed from theme.textPrimary to theme.primary
+            color: theme.primary,
           }}
         >
           Log in to your account
@@ -265,7 +271,7 @@ export default function Login() {
             <a
               href="#"
               className="text-decoration-none small fw-semibold"
-              style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
+              style={{ color: theme.primary }}
               onClick={handleForgotPassword}
             >
               Forgot password?
@@ -291,13 +297,13 @@ export default function Login() {
           {/* Register Link */}
           <p
             className="text-center mt-3 small fw-semibold"
-            style={{ color: theme.primary }} // Changed from hardcoded color to theme.primary
+            style={{ color: theme.primary }}
           >
             Don't have an account?{" "}
             <Link
               to="/register"
               className="fw-bold"
-              style={{ color: theme.primary }} // Changed from hardcoded color to theme.primary
+              style={{ color: theme.primary }}
             >
               Register here
             </Link>

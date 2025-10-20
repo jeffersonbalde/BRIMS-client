@@ -27,6 +27,7 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const [avatarFile, setAvatarFile] = useState(null);
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
   const fileInputRef = useRef(null);
   const [form, setForm] = useState({
     name: "",
@@ -44,6 +45,12 @@ export default function Register() {
   const [checkingDuplicates, setCheckingDuplicates] = useState({});
   const navigate = useNavigate();
   const { login } = useAuth(); // Get the login function from auth context
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = RegisterBackground;
+    img.onload = () => setBackgroundLoaded(true);
+  }, []);
 
   useEffect(() => {
     setIsMounted(true);
@@ -381,42 +388,105 @@ export default function Register() {
   };
 
   return (
-    <div className="min-vh-100 d-flex flex-column flex-lg-row">
+    <div className="min-vh-100 d-flex flex-column flex-lg-row position-relative">
       {/* Left Panel - Fixed on large screens */}
-      <div
-        className="col-lg-6 d-none d-lg-flex flex-column justify-content-center align-items-center text-white p-5 position-fixed start-0 top-0 h-100"
-        style={{
-          backgroundImage: `linear-gradient(rgba(45, 90, 39, 0.85), rgba(45, 90, 39, 0.85)), url(${RegisterBackground})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <img
-          src={Logo}
-          alt="Barangay Logo"
-          className="mb-3"
-          style={{ width: "110px" }}
-        />
-        <img
-          src={TextLogo}
-          alt="System Text Logo"
-          className="mb-3"
-          style={{ width: "160px" }}
-        />
-        <h4 className="fw-bold text-center mb-3">
-          Barangay Real-Time Incident Monitoring System
-        </h4>
-        <p
-          className="text-center"
+      <div className="col-lg-6 d-none d-lg-flex flex-column justify-content-center align-items-center text-white p-5 position-fixed start-0 top-0 h-100">
+        {/* Background Image with Blur Effect - SEPARATE DIV */}
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
           style={{
-            fontSize: "15px",
-            maxWidth: "360px",
-            color: "rgba(255,255,255,0.9)",
+            backgroundImage: `url(${RegisterBackground})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: backgroundLoaded ? "blur(0px)" : "blur(10px)",
+            transition: "filter 0.5s ease-in-out",
           }}
-        >
-          Register your barangay to start monitoring incidents and population in
-          real-time. Empower your community with BRIMS.
-        </p>
+        />
+
+        {/* Gradient Overlay - SEPARATE DIV */}
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            background:
+              "linear-gradient(rgba(45, 90, 39, 0.85), rgba(45, 90, 39, 0.85))",
+          }}
+        />
+
+        {/* Content - ALWAYS CLEAR */}
+        <div className="position-relative z-2 d-flex flex-column align-items-center justify-content-center w-100 h-100 px-4">
+          {/* Logo Section - Same as Login.jsx */}
+          <div className="text-center mb-4">
+            <div
+              className="d-flex align-items-center justify-content-center mx-auto"
+              style={{
+                width: "fit-content",
+                gap: "0.3rem",
+              }}
+            >
+              {/* Left: Logo Image */}
+              <div
+                className="d-flex align-items-center justify-content-center"
+                style={{
+                  width: "85px",
+                }}
+              >
+                <img
+                  src={Logo}
+                  alt="Barangay Logo"
+                  style={{
+                    width: "100px",
+                    height: "100px",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+
+              {/* Right: Text Logo + Description */}
+              <div
+                className="d-flex flex-column justify-content-center align-items-start"
+                style={{
+                  width: "150px",
+                }}
+              >
+                <img
+                  src={TextLogo}
+                  alt="System Text Logo"
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    objectFit: "contain",
+                    marginBottom: "0.2rem",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Title - Same styling as Login */}
+          <h4
+            className="fw-bold text-center mb-3"
+            style={{
+              color: "white",
+              fontSize: "1.5rem",
+            }}
+          >
+            Barangay Real-Time Incident Monitoring System
+          </h4>
+
+          {/* Description */}
+          <p
+            className="text-center mx-auto"
+            style={{
+              fontSize: "15px",
+              maxWidth: "360px",
+              color: "rgba(255,255,255,0.9)",
+              lineHeight: "1.5",
+            }}
+          >
+            Register your barangay to start monitoring incidents and population
+            in real-time. Empower your community with BRIMS.
+          </p>
+        </div>
       </div>
 
       {/* Right Panel - Scrollable with Floating Animations */}
