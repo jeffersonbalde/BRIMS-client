@@ -1,6 +1,7 @@
 // components/dashboards/RejectedUser.jsx
 import React from "react";
 import { useAuth } from "../../contexts/AuthContext";
+import { showAlert } from "../../services/notificationService"; // ADDED IMPORT
 import {
   FaTimesCircle,
   FaEnvelope,
@@ -19,11 +20,21 @@ import {
 const RejectedUser = () => {
   const { user } = useAuth();
 
+  // UPDATED: Use the same modal as Settings.jsx
   const handleContactSupport = () => {
     const phoneNumber = "+639123456789";
     const email = "admin@municipality.gov.ph";
-    const message = `Contact Municipal Administrator:\n\n📞 Phone: ${phoneNumber}\n📧 Email: ${email}\n\nOffice Hours: 8:00 AM - 5:00 PM (Monday-Friday)`;
-    alert(message);
+    
+    showAlert.info(
+      "Contact Support",
+      `<div style="text-align: left;">
+        <p><strong>Municipal Administrator Contact Details:</strong></p>
+        <p>📞 Phone: <strong>${phoneNumber}</strong></p>
+        <p>📧 Email: <strong>${email}</strong></p>
+        <p><br>Office Hours: <strong>8:00 AM - 5:00 PM (Monday-Friday)</strong></p>
+      </div>`,
+      "Got it"
+    );
   };
 
   const formatDate = (dateString) => {
@@ -332,6 +343,7 @@ const RejectedUser = () => {
               </h6>
             </div>
             <div className="card-body p-3 d-flex flex-column">
+              {/* UPDATED: Contact Support Button - Now uses proper modal */}
               <button
                 className="btn w-100 d-flex align-items-center justify-content-center py-2 mb-2 position-relative overflow-hidden"
                 onClick={handleContactSupport}
@@ -693,6 +705,7 @@ const RejectedUser = () => {
                   </p>
                 </div>
                 <div className="col-auto">
+                  {/* UPDATED: Get Help Button - Now uses proper modal */}
                   <button
                     className="btn btn-sm position-relative overflow-hidden"
                     onClick={handleContactSupport}

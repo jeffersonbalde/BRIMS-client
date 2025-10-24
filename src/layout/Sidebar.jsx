@@ -1,4 +1,4 @@
-// Sidebar.jsx - FIXED with onCloseSidebar prop
+// Sidebar.jsx - FIXED with Rejected User Support
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLocation, Link } from "react-router-dom";
@@ -193,6 +193,20 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
   ];
 
+  // Rejected User Sidebar Items - Limited access (NEW)
+  const rejectedUserMenuItems = [
+    {
+      heading: "Account",
+      items: [
+        {
+          icon: "fas fa-times-circle",
+          label: "Account Rejected",
+          href: "/dashboard",
+        },
+      ],
+    },
+  ];
+
   // Choose menu based on role and approval status
   let menuItems = [];
 
@@ -203,6 +217,8 @@ const Sidebar = ({ onCloseSidebar }) => {
       menuItems = barangayMenuItems; // Full access for approved barangay users
     } else if (isPending) {
       menuItems = pendingApprovalMenuItems; // Limited access for pending users
+    } else if (user?.status === "rejected") { // NEW: Handle rejected users
+      menuItems = rejectedUserMenuItems; // Limited access for rejected users
     }
   }
 
@@ -289,6 +305,8 @@ const Sidebar = ({ onCloseSidebar }) => {
             ? "Municipal Admin"
             : isPending
             ? "Pending Approval"
+            : user?.status === "rejected" // NEW: Show rejected status
+            ? "Account Rejected"
             : user?.barangay_name}
         </div>
       </div>

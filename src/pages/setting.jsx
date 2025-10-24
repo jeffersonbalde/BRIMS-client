@@ -1,4 +1,4 @@
-// pages/Settings.jsx - FIXED with Contact Validation and Separate Loading States
+// pages/Settings.jsx - UPDATED with Avatar Upload
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { showAlert, showToast } from '../services/notificationService';
@@ -17,18 +17,22 @@ import {
   FaArrowRight,
   FaEye,
   FaEyeSlash,
-  FaSpinner
+  FaSpinner,
+  FaCamera,
+  FaTimes
 } from 'react-icons/fa';
 
 const Settings = () => {
   const { user, token, refreshUserData } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
-  const [isAccountLoading, setIsAccountLoading] = useState(false); // Separate state for account
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false); // Separate state for password
+  const [isAccountLoading, setIsAccountLoading] = useState(false);
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+  const [isAvatarLoading, setIsAvatarLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || null);
 
   // Form states
   const [accountForm, setAccountForm] = useState({
@@ -58,6 +62,125 @@ const Settings = () => {
     inputBorder: "#c8d0c8",
   };
 
+  // Handle avatar upload
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      showAlert.error('Invalid File', 'Please select a valid image file (JPEG, PNG, GIF, or WebP).');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      showAlert.error('File Too Large', 'Please select an image smaller than 5MB.');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setAvatarPreview(e.target.result);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload avatar
+    await uploadAvatar(file);
+  };
+
+  // Upload avatar to server
+  const uploadAvatar = async (file) => {
+    setIsAvatarLoading(true);
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API}/profile/avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast.success('Avatar updated successfully!');
+        
+        // Update the user context by refreshing user data
+        if (refreshUserData) {
+          await refreshUserData();
+        }
+      } else {
+        if (data.errors) {
+          showAlert.error('Upload Failed', data.errors.avatar ? data.errors.avatar[0] : 'Failed to upload avatar');
+        } else {
+          showAlert.error('Upload Failed', data.message || 'Failed to upload avatar');
+        }
+        // Reset preview on error
+        setAvatarPreview(user?.avatar || null);
+      }
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
+      // Reset preview on error
+      setAvatarPreview(user?.avatar || null);
+    } finally {
+      setIsAvatarLoading(false);
+    }
+  };
+
+  // Remove avatar
+  const handleRemoveAvatar = async () => {
+    const result = await showAlert.confirm(
+      "Remove Avatar",
+      "Are you sure you want to remove your profile picture?",
+      "Yes, Remove",
+      "Cancel"
+    );
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setIsAvatarLoading(true);
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API}/profile/avatar`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        showToast.success('Avatar removed successfully!');
+        setAvatarPreview(null);
+        
+        // Update the user context by refreshing user data
+        if (refreshUserData) {
+          await refreshUserData();
+        }
+      } else {
+        showAlert.error('Remove Failed', data.message || 'Failed to remove avatar');
+      }
+    } catch (error) {
+      console.error('Avatar remove error:', error);
+      showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
+    } finally {
+      setIsAvatarLoading(false);
+    }
+  };
+
   const handleContactSupport = () => {
     const phoneNumber = "+639123456789";
     const email = "admin@municipality.gov.ph";
@@ -85,7 +208,7 @@ const Settings = () => {
     }
   };
 
-  // Handle contact number input - numbers only and max 11 digits (FROM REGISTER.JSX)
+  // Handle contact number input - numbers only and max 11 digits
   const handleContactInput = (e) => {
     const { name, value } = e.target;
     
@@ -150,7 +273,7 @@ const Settings = () => {
     }
   };
 
-  // Validate contact number before submission (FROM REGISTER.JSX)
+  // Validate contact number before submission
   const validateContactNumber = (contact) => {
     if (!contact) {
       return 'Contact number is required';
@@ -196,7 +319,7 @@ const Settings = () => {
       return;
     }
 
-    // Validate contact number (NEW VALIDATION)
+    // Validate contact number
     const contactError = validateContactNumber(accountForm.contact);
     if (contactError) {
       setFormErrors(prev => ({ ...prev, contact: [contactError] }));
@@ -234,7 +357,7 @@ const Settings = () => {
       }
     });
 
-    setIsAccountLoading(true); // Use specific account loading state
+    setIsAccountLoading(true);
     setFormErrors({});
 
     try {
@@ -275,7 +398,7 @@ const Settings = () => {
       console.error('Account update error:', error);
       showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
     } finally {
-      setIsAccountLoading(false); // Use specific account loading state
+      setIsAccountLoading(false);
       // Re-enable form inputs
       const form = e.target;
       const inputs = form.querySelectorAll('input, button, textarea, select');
@@ -321,7 +444,7 @@ const Settings = () => {
       }
     });
 
-    setIsPasswordLoading(true); // Use specific password loading state
+    setIsPasswordLoading(true);
     setFormErrors({});
 
     // Client-side validation
@@ -379,7 +502,7 @@ const Settings = () => {
       console.error('Password change error:', error);
       showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
     } finally {
-      setIsPasswordLoading(false); // Use specific password loading state
+      setIsPasswordLoading(false);
       // Re-enable form inputs
       const form = e.target;
       const inputs = form.querySelectorAll('input, button, textarea, select');
@@ -399,42 +522,150 @@ const Settings = () => {
 
   return (
     <div className="container-fluid px-1 py-3">
-      {/* Header with Light Background - Matching Profile.jsx */}
-      <div className="text-center mb-4">
-        <div className="d-flex justify-content-center align-items-center mb-3">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center me-3 position-relative flex-shrink-0"
+{/* Header with Light Background - Matching Profile.jsx */}
+<div className="text-center mb-4">
+  <div className="d-flex justify-content-center align-items-center mb-3">
+    {/* Avatar Section */}
+    <div className="position-relative me-3">
+      <div
+        className="rounded-circle border d-flex align-items-center justify-content-center position-relative"
+        style={{
+          width: "80px",
+          height: "80px",
+          background: avatarPreview 
+            ? "transparent"
+            : user?.role === 'admin' 
+              ? "linear-gradient(135deg, #8B4513 0%, #A0522D 100%)"
+              : "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
+          border: user?.role === 'admin' 
+            ? "3px solid #8B4513 !important" 
+            : "3px solid var(--primary-light) !important",
+          color: "white",
+          overflow: "hidden",
+        }}
+      >
+        {avatarPreview ? (
+          <img
+            src={avatarPreview}
+            alt="Profile"
             style={{
-              width: "50px",
-              height: "50px",
-              background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
-              boxShadow: "0 4px 15px rgba(45, 90, 39, 0.3)",
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              position: "absolute",
+              top: 0,
+              left: 0,
+            }}
+          />
+        ) : (
+          <div className="d-flex align-items-center justify-content-center">
+            {user?.role === 'admin' ? (
+              <FaShieldAlt size={32} />
+            ) : (
+              <FaUser size={32} />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Avatar Upload Button - FIXED: Made circular and properly styled */}
+      <div className="position-absolute bottom-0 end-0 d-flex gap-1">
+        <label
+          htmlFor="avatar-upload"
+          className="btn p-1 rounded-circle d-flex align-items-center justify-content-center"
+          style={{
+            width: "28px",
+            height: "28px",
+            background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
+            color: "white",
+            border: "2px solid white",
+            cursor: isAvatarLoading ? 'not-allowed' : 'pointer',
+            opacity: isAvatarLoading ? 0.6 : 1,
+            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
+            transition: "all 0.3s ease",
+          }}
+          onMouseEnter={(e) => {
+            if (!isAvatarLoading) {
+              e.target.style.transform = "scale(1.1)";
+              e.target.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.3)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isAvatarLoading) {
+              e.target.style.transform = "scale(1)";
+              e.target.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.2)";
+            }
+          }}
+          title="Change avatar"
+        >
+          {isAvatarLoading ? (
+            <FaSpinner className="spinner" size={12} />
+          ) : (
+            <FaCamera size={12} />
+          )}
+        </label>
+        <input
+          id="avatar-upload"
+          type="file"
+          accept="image/*"
+          onChange={handleAvatarUpload}
+          disabled={isAvatarLoading}
+          style={{ display: 'none' }}
+        />
+
+        {/* Remove Avatar Button - FIXED: Made circular and properly styled */}
+        {avatarPreview && (
+          <button
+            className="btn p-1 rounded-circle d-flex align-items-center justify-content-center"
+            onClick={handleRemoveAvatar}
+            disabled={isAvatarLoading}
+            style={{
+              width: "28px",
+              height: "28px",
+              background: "linear-gradient(135deg, #dc3545 0%, #c82333 100%)",
+              color: "white",
+              border: "2px solid white",
+              cursor: isAvatarLoading ? 'not-allowed' : 'pointer',
+              opacity: isAvatarLoading ? 0.6 : 1,
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.2)",
               transition: "all 0.3s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.1)";
-              e.currentTarget.style.boxShadow = "0 6px 20px rgba(45, 90, 39, 0.4)";
+              if (!isAvatarLoading) {
+                e.target.style.transform = "scale(1.1)";
+                e.target.style.boxShadow = "0 4px 10px rgba(0, 0, 0, 0.3)";
+              }
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "0 4px 15px rgba(45, 90, 39, 0.3)";
+              if (!isAvatarLoading) {
+                e.target.style.transform = "scale(1)";
+                e.target.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.2)";
+              }
             }}
+            title="Remove avatar"
           >
-            <FaUser size={22} className="text-white" />
-          </div>
-          <div className="text-start">
-            <h1
-              className="h3 mb-1 fw-bold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Account Settings
-            </h1>
-            <p className="text-muted mb-0 small">
-              {user?.name} • {getRoleDisplay(user?.role)}
-            </p>
-          </div>
-        </div>
+            <FaTimes size={12} />
+          </button>
+        )}
       </div>
+    </div>
+
+    <div className="text-start">
+      <h1
+        className="h3 mb-1 fw-bold"
+        style={{ color: "var(--text-primary)" }}
+      >
+        Account Settings
+      </h1>
+      <p className="text-muted mb-0 small">
+        {user?.name} • {getRoleDisplay(user?.role)}
+      </p>
+      <small className="text-muted">
+        Click the camera icon to update your profile picture
+      </small>
+    </div>
+  </div>
+</div>
 
       <div className="row g-3">
         {/* Sidebar Navigation */}
@@ -872,7 +1103,7 @@ const Settings = () => {
                       <button
                         type="submit"
                         className="btn w-100 d-flex align-items-center justify-content-center py-2 position-relative overflow-hidden"
-                        disabled={isAccountLoading} // Use specific account loading state
+                        disabled={isAccountLoading}
                         style={{
                           background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
                           color: "white",
@@ -898,7 +1129,7 @@ const Settings = () => {
                           }
                         }}
                       >
-                        {isAccountLoading ? ( // Use specific account loading state
+                        {isAccountLoading ? (
                           <>
                             <FaSpinner className="spinner me-2" size={12} />
                             Updating Account...
@@ -1173,7 +1404,7 @@ const Settings = () => {
                       <button
                         type="submit"
                         className="btn w-100 d-flex align-items-center justify-content-center py-2 position-relative overflow-hidden"
-                        disabled={isPasswordLoading} // Use specific password loading state
+                        disabled={isPasswordLoading}
                         style={{
                           background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
                           color: "white",
@@ -1199,7 +1430,7 @@ const Settings = () => {
                           }
                         }}
                       >
-                        {isPasswordLoading ? ( // Use specific password loading state
+                        {isPasswordLoading ? (
                           <>
                             <FaSpinner className="spinner me-2" size={12} />
                             Changing Password...

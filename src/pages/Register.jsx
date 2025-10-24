@@ -1,392 +1,382 @@
-// pages/Settings.jsx - FIXED with Proper Contact Validation and Loading States
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { showAlert, showToast } from '../services/notificationService';
+import { useState, useRef, useEffect } from "react";
 import {
-  FaUser,
-  FaKey,
   FaEnvelope,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaUser,
   FaPhone,
   FaMapMarkerAlt,
   FaBuilding,
-  FaIdCard,
-  FaShieldAlt,
-  FaCalendarAlt,
-  FaSave,
-  FaLock,
-  FaArrowRight,
-  FaEye,
-  FaEyeSlash,
-  FaSpinner
-} from 'react-icons/fa';
+  FaCamera,
+  FaTimes,
+  FaSpinner,
+  FaCheck,
+  FaExclamationTriangle,
+} from "react-icons/fa";
+import { showAlert, showToast } from "../services/notificationService";
+import Logo from "../assets/images/logo.png";
+import TextLogo from "../assets/images/text-logo-no-bg.png";
+import RegisterBackground from "../assets/images/register-pic.jpg";
+import DefaultAvatar from "../assets/images/default-avatar.jpg";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext"; // Import the auth context
 
-const Settings = () => {
-  const { user, token, refreshUserData } = useAuth();
-  const [activeTab, setActiveTab] = useState('account');
-  const [isAccountLoading, setIsAccountLoading] = useState(false);
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
+export default function Register() {
+  const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
-
-  // Form states
-  const [accountForm, setAccountForm] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    contact: user?.contact || '',
-    position: user?.position || ''
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [backgroundLoaded, setBackgroundLoaded] = useState(false);
+  const fileInputRef = useRef(null);
+  const [form, setForm] = useState({
+    name: "",
+    barangayName: "",
+    position: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    contact: "",
+    municipality: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [checkingDuplicates, setCheckingDuplicates] = useState({});
+  const navigate = useNavigate();
+  const { login } = useAuth(); // Get the login function from auth context
 
-  const [passwordForm, setPasswordForm] = useState({
-    current_password: '',
-    new_password: '',
-    confirm_password: ''
-  });
+  useEffect(() => {
+    const img = new Image();
+    img.src = RegisterBackground;
+    img.onload = () => setBackgroundLoaded(true);
+  }, []);
 
-  // Theme from Register.jsx
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // In Register.jsx, replace the theme object:
   const theme = {
-    primary: "#2d5a27",
-    primaryDark: "#1f451c",
-    primaryLight: "#3a6f32",
-    accent: "#4a7c40",
-    accentLight: "#5a8c50",
-    textPrimary: "#1a2a1a",
-    textSecondary: "#4a5c4a",
-    inputBg: "#f8faf8",
-    inputText: "#1a2a1a",
-    inputBorder: "#c8d0c8",
+    primary: "#2d5a27", // Your primary color
+    textPrimary: "#1a2a1a", // Your text primary
+    textSecondary: "#4a5c4a", // Your text secondary
+    inputBg: "#f8faf8", // Your input background
+    inputText: "#1a2a1a", // Your input text
+    inputBorder: "#c8d0c8", // Your input border
   };
 
-  const handleContactSupport = () => {
-    const phoneNumber = "+639123456789";
-    const email = "admin@municipality.gov.ph";
-    
-    showAlert.info(
-      "Contact Support",
-      `<div style="text-align: left;">
-        <p><strong>Municipal Administrator Contact Details:</strong></p>
-        <p>📞 Phone: <strong>${phoneNumber}</strong></p>
-        <p>📧 Email: <strong>${email}</strong></p>
-        <p><br>Office Hours: <strong>8:00 AM - 5:00 PM (Monday-Friday)</strong></p>
-      </div>`,
-      "Got it"
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+
+    // Special handling for contact number - limit to 11 digits
+    if (name === "contact") {
+      // Remove all non-digit characters and limit to 11 digits
+      const digitsOnly = value.replace(/\D/g, "").slice(0, 11);
+      setForm((prev) => ({ ...prev, [name]: digitsOnly }));
+
+      // Clear error for this field when user starts typing
+      if (fieldErrors[name]) {
+        setFieldErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+
+      // Check for duplicates
+      if (digitsOnly.length >= 10) {
+        checkDuplicate(name, digitsOnly);
+      }
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+
+      // Clear error for this field when user starts typing
+      if (fieldErrors[name]) {
+        setFieldErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+
+      // Check for duplicates in real-time for specific fields
+      if (["email", "barangayName", "name"].includes(name)) {
+        checkDuplicate(name, value);
+      }
+    }
+  };
+
+  const checkDuplicate = async (field, value) => {
+    if (!value || value.length < 2) return;
+
+    setCheckingDuplicates((prev) => ({ ...prev, [field]: true }));
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_LARAVEL_API}/check-duplicates`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            field: field,
+            value: value,
+            municipality: form.municipality,
+            barangayName: form.barangayName,
+            name: form.name,
+            position: form.position,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.exists) {
+        setFieldErrors((prev) => ({ ...prev, [field]: data.message }));
+      } else {
+        setFieldErrors((prev) => ({ ...prev, [field]: "" }));
+      }
+    } catch (error) {
+      console.error("Duplicate check error:", error);
+    } finally {
+      setCheckingDuplicates((prev) => ({ ...prev, [field]: false }));
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        showAlert.error(
+          "Invalid File",
+          "Please select an image file (JPEG, PNG, etc.)"
+        );
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        showAlert.error("File Too Large", "Image size should be less than 5MB");
+        return;
+      }
+
+      setAvatarFile(file);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setAvatarPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+
+      showToast.success("Avatar uploaded successfully");
+    }
+  };
+
+  const removeAvatar = async () => {
+    const result = await showAlert.confirm(
+      "Remove Avatar",
+      "Are you sure you want to remove the uploaded avatar?",
+      "Yes, Remove",
+      "Keep It"
     );
+
+    if (result.isConfirmed) {
+      setAvatarPreview(null);
+      setAvatarFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      showToast.info("Avatar removed");
+    }
   };
 
-  const getRoleDisplay = (role) => {
-    switch (role) {
-      case 'admin':
-        return 'Municipal Administrator';
-      case 'barangay':
-        return 'Barangay Official';
+  const validateForm = () => {
+    const errors = {};
+
+    if (!form.name.trim()) {
+      errors.name = "Please enter your full name";
+    }
+
+    if (!form.barangayName.trim()) {
+      errors.barangayName = "Please enter your barangay name";
+    }
+
+    if (!form.position.trim()) {
+      errors.position = "Please enter your position/role";
+    }
+
+    if (!form.email.trim()) {
+      errors.email = "Please enter your email address";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.email)) {
+        errors.email = "Please enter a valid email address";
+      }
+    }
+
+    if (!form.contact.trim()) {
+      errors.contact = "Please enter your contact number";
+    } else {
+      const contactRegex = /^[0-9]{11}$/;
+      if (!contactRegex.test(form.contact)) {
+        errors.contact = "Please enter a valid 11-digit contact number";
+      }
+    }
+
+    if (!form.municipality.trim()) {
+      errors.municipality = "Please enter your municipality";
+    }
+
+    if (form.password.length < 8) {
+      errors.password = "Password must be at least 8 characters long";
+    }
+
+    if (form.password !== form.confirmPassword) {
+      errors.confirmPassword = "Passwords don't match";
+    }
+
+    // Check for duplicate errors
+    Object.keys(fieldErrors).forEach((key) => {
+      if (fieldErrors[key]) {
+        errors[key] = fieldErrors[key];
+      }
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      // Show first error
+      const firstError = Object.values(errors)[0];
+      showAlert.error("Validation Error", firstError);
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const loadingAlert = showAlert.loading("Creating your account...");
+
+      const formData = new FormData();
+      formData.append("name", form.name);
+      formData.append("barangayName", form.barangayName);
+      formData.append("position", form.position);
+      formData.append("email", form.email);
+      formData.append("password", form.password);
+      formData.append("password_confirmation", form.confirmPassword);
+      formData.append("contact", form.contact);
+      formData.append("municipality", form.municipality);
+
+      if (avatarFile) {
+        formData.append("avatar", avatarFile);
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_LARAVEL_API}/register`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      showAlert.close();
+
+      if (response.ok) {
+        // Store token and user data
+        localStorage.setItem("access_token", data.access_token);
+
+        // Update auth context by manually logging in the user
+        // This ensures the auth state is updated throughout the app
+        const loginResult = await login(form.email, form.password);
+
+        if (loginResult.success) {
+          // Show success message with approval notice
+          await showAlert.success(
+            "Registration Successful!",
+            data.message ||
+              "Your account has been created successfully. You can now access the dashboard but will have limited access until admin approval."
+          );
+
+          // Redirect to dashboard
+          navigate("/dashboard", { replace: true });
+        } else {
+          // If auto-login fails, show message and redirect to login
+          await showAlert.success(
+            "Registration Successful!",
+            "Your account has been created successfully. Please login to access your dashboard."
+          );
+          navigate("/", { replace: true });
+        }
+      } else {
+        // Handle specific error messages from backend
+        if (data.errors) {
+          // Set field-specific errors
+          setFieldErrors(data.errors);
+          // Show first error
+          const firstError = Object.values(data.errors).flat()[0];
+          showAlert.error("Registration Failed", firstError);
+        } else {
+          showAlert.error(
+            "Registration Failed",
+            data.message ||
+              "There was an error creating your account. Please try again."
+          );
+        }
+      }
+    } catch (error) {
+      showAlert.close();
+      showAlert.error(
+        "Network Error",
+        "Unable to connect to the server. Please check your internet connection and try again."
+      );
+      console.error("Registration error:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getFieldStatus = (fieldName) => {
+    if (checkingDuplicates[fieldName]) {
+      return "checking";
+    }
+    if (fieldErrors[fieldName]) {
+      return "error";
+    }
+    if (
+      form[fieldName] &&
+      !fieldErrors[fieldName] &&
+      (fieldName !== "contact" || form.contact.length === 11)
+    ) {
+      return "success";
+    }
+    return "default";
+  };
+
+  const renderFieldIcon = (fieldName) => {
+    const status = getFieldStatus(fieldName);
+
+    switch (status) {
+      case "checking":
+        return <FaSpinner className="spinner" size={14} />;
+      case "error":
+        return <FaExclamationTriangle className="text-danger" size={14} />;
+      case "success":
+        return <FaCheck className="text-success" size={14} />;
       default:
-        return role;
+        return null;
     }
-  };
-
-  // Handle contact number input - numbers only and max 11 digits
-  const handleContactInput = (e) => {
-    const { name, value } = e.target;
-    
-    // Remove any non-digit characters
-    const numbersOnly = value.replace(/\D/g, '');
-    
-    // Limit to 11 characters
-    const limitedValue = numbersOnly.slice(0, 11);
-    
-    setAccountForm(prev => ({
-      ...prev,
-      [name]: limitedValue
-    }));
-    
-    // Clear errors when user starts typing
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  // Handle account form input changes
-  const handleAccountInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Special handling for contact field
-    if (name === 'contact') {
-      handleContactInput(e);
-      return;
-    }
-    
-    setAccountForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear errors when user starts typing
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  // Handle password form input changes
-  const handlePasswordInputChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    
-    // Clear errors when user starts typing
-    if (formErrors[name]) {
-      setFormErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
-
-  // Validate contact number before submission
-  const validateContactNumber = (contact) => {
-    if (!contact) {
-      return 'Contact number is required';
-    }
-    
-    if (contact.length !== 11) {
-      return 'Contact number must be exactly 11 digits';
-    }
-    
-    if (!contact.startsWith('09')) {
-      return 'Contact number must start with 09';
-    }
-    
-    return null;
-  };
-
-  // Update account information with confirmation and loading modal
-  const handleAccountUpdate = async (e) => {
-    e.preventDefault();
-    
-    // Check if there are any changes
-    const hasChanges = 
-      accountForm.name !== user?.name ||
-      accountForm.email !== user?.email ||
-      accountForm.contact !== user?.contact ||
-      accountForm.position !== user?.position;
-
-    if (!hasChanges) {
-      showToast.info('No changes detected to update.');
-      return;
-    }
-
-    // Validate contact number
-    const contactError = validateContactNumber(accountForm.contact);
-    if (contactError) {
-      setFormErrors(prev => ({ ...prev, contact: [contactError] }));
-      showAlert.error('Validation Error', contactError);
-      return;
-    }
-
-    // Show confirmation dialog
-    const result = await showAlert.confirm(
-      "Update Account Information",
-      "Are you sure you want to update your account information?",
-      "Yes, Update",
-      "Cancel"
-    );
-
-    if (!result.isConfirmed) {
-      return;
-    }
-
-    // Show loading modal that blocks interaction
-    showAlert.loading("Updating Profile...", "Please wait while we update your account information", {
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      allowEnterKey: false,
-      showConfirmButton: false,
-      didOpen: () => {
-        // Disable form inputs during processing
-        const form = e.target;
-        const inputs = form.querySelectorAll('input, button, textarea, select');
-        inputs.forEach(input => {
-          input.setAttribute('disabled', 'true');
-          input.style.opacity = '0.6';
-          input.style.cursor = 'not-allowed';
-        });
-      }
-    });
-
-    setIsAccountLoading(true);
-    setFormErrors({});
-
-    try {
-      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API}/profile/update`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(accountForm)
-      });
-
-      const data = await response.json();
-
-      // Close loading modal
-      showAlert.close();
-
-      if (response.ok) {
-        showToast.success('Account information updated successfully!');
-        
-        // Update the user context by refreshing user data
-        if (refreshUserData) {
-          await refreshUserData();
-        }
-        
-      } else {
-        if (data.errors) {
-          setFormErrors(data.errors);
-          showAlert.error('Update Failed', 'Please check the form for errors.');
-        } else {
-          showAlert.error('Update Failed', data.message || 'Failed to update account information');
-        }
-      }
-    } catch (error) {
-      // Close loading modal in case of error
-      showAlert.close();
-      console.error('Account update error:', error);
-      showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
-    } finally {
-      setIsAccountLoading(false);
-      // Re-enable form inputs
-      const form = e.target;
-      const inputs = form.querySelectorAll('input, button, textarea, select');
-      inputs.forEach(input => {
-        input.removeAttribute('disabled');
-        input.style.opacity = '1';
-        input.style.cursor = '';
-      });
-    }
-  };
-
-  // Change password with confirmation and loading modal
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    
-    // Show confirmation dialog
-    const result = await showAlert.confirm(
-      "Change Password",
-      "Are you sure you want to change your password?",
-      "Yes, Change Password",
-      "Cancel"
-    );
-
-    if (!result.isConfirmed) {
-      return;
-    }
-
-    // Show loading modal that blocks interaction
-    showAlert.loading("Changing Password...", "Please wait while we securely update your password", {
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      allowEnterKey: false,
-      showConfirmButton: false,
-      didOpen: () => {
-        // Disable form inputs during processing
-        const form = e.target;
-        const inputs = form.querySelectorAll('input, button, textarea, select');
-        inputs.forEach(input => {
-          input.setAttribute('disabled', 'true');
-          input.style.opacity = '0.6';
-          input.style.cursor = 'not-allowed';
-        });
-      }
-    });
-
-    setIsPasswordLoading(true);
-    setFormErrors({});
-
-    // Client-side validation
-    if (passwordForm.new_password !== passwordForm.confirm_password) {
-      showAlert.close();
-      setFormErrors({ confirm_password: ['Passwords do not match.'] });
-      setIsPasswordLoading(false);
-      showAlert.error('Validation Error', 'Passwords do not match.');
-      return;
-    }
-
-    if (passwordForm.new_password.length < 8) {
-      showAlert.close();
-      setFormErrors({ new_password: ['Password must be at least 8 characters long.'] });
-      setIsPasswordLoading(false);
-      showAlert.error('Validation Error', 'Password must be at least 8 characters long.');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API}/profile/change-password`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(passwordForm)
-      });
-
-      const data = await response.json();
-
-      // Close loading modal
-      showAlert.close();
-
-      if (response.ok) {
-        showToast.success('Password changed successfully!');
-        // Reset password form
-        setPasswordForm({
-          current_password: '',
-          new_password: '',
-          confirm_password: ''
-        });
-      } else {
-        if (data.errors) {
-          setFormErrors(data.errors);
-          showAlert.error('Password Change Failed', 'Please check the form for errors.');
-        } else {
-          showAlert.error('Password Change Failed', data.message || 'Failed to change password');
-        }
-      }
-    } catch (error) {
-      // Close loading modal in case of error
-      showAlert.close();
-      console.error('Password change error:', error);
-      showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
-    } finally {
-      setIsPasswordLoading(false);
-      // Re-enable form inputs
-      const form = e.target;
-      const inputs = form.querySelectorAll('input, button, textarea, select');
-      inputs.forEach(input => {
-        input.removeAttribute('disabled');
-        input.style.opacity = '1';
-        input.style.cursor = '';
-      });
-    }
-  };
-
-  // Clear errors when switching tabs
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setFormErrors({});
   };
 
   // Format contact number for display (XXX-XXX-XXXX)
   const formatContact = (value) => {
-    if (!value) return '';
     const numbers = value.replace(/\D/g, "");
     if (numbers.length <= 3) return numbers;
     if (numbers.length <= 6)
@@ -398,876 +388,797 @@ const Settings = () => {
   };
 
   return (
-    <div className="container-fluid px-1 py-3">
-      {/* Header with Light Background - Matching Profile.jsx */}
-      <div className="text-center mb-4">
-        <div className="d-flex justify-content-center align-items-center mb-3">
-          <div
-            className="rounded-circle d-flex align-items-center justify-content-center me-3 position-relative flex-shrink-0"
+    <div className="min-vh-100 d-flex flex-column flex-lg-row position-relative">
+      {/* Left Panel - Fixed on large screens */}
+      <div className="col-lg-6 d-none d-lg-flex flex-column justify-content-center align-items-center text-white p-5 position-fixed start-0 top-0 h-100">
+        {/* Background Image with Blur Effect - SEPARATE DIV */}
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            backgroundImage: `url(${RegisterBackground})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            filter: backgroundLoaded ? "blur(0px)" : "blur(10px)",
+            transition: "filter 0.5s ease-in-out",
+          }}
+        />
+
+        {/* Gradient Overlay - SEPARATE DIV */}
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            background:
+              "linear-gradient(rgba(45, 90, 39, 0.85), rgba(45, 90, 39, 0.85))",
+          }}
+        />
+
+        {/* Content - ALWAYS CLEAR */}
+        <div className="position-relative z-2 d-flex flex-column align-items-center justify-content-center w-100 h-100 px-4">
+          {/* Logo Section - Same as Login.jsx */}
+          <div className="text-center mb-4">
+            <div
+              className="d-flex align-items-center justify-content-center mx-auto"
+              style={{
+                width: "fit-content",
+                gap: "0.3rem",
+              }}
+            >
+              {/* Left: Logo Image */}
+              <div
+                className="d-flex align-items-center justify-content-center"
+                style={{
+                  width: "85px",
+                }}
+              >
+                <img
+                  src={Logo}
+                  alt="Barangay Logo"
+                  style={{
+                    width: "100px",
+                    height: "100px",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+
+              {/* Right: Text Logo + Description */}
+              <div
+                className="d-flex flex-column justify-content-center align-items-start"
+                style={{
+                  width: "150px",
+                }}
+              >
+                <img
+                  src={TextLogo}
+                  alt="System Text Logo"
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    objectFit: "contain",
+                    marginBottom: "0.2rem",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Title - Same styling as Login */}
+          <h4
+            className="fw-bold text-center mb-3"
             style={{
-              width: "50px",
-              height: "50px",
-              background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
-              boxShadow: "0 4px 15px rgba(45, 90, 39, 0.3)",
-              transition: "all 0.3s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.1)";
-              e.currentTarget.style.boxShadow = "0 6px 20px rgba(45, 90, 39, 0.4)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "0 4px 15px rgba(45, 90, 39, 0.3)";
+              color: "white",
+              fontSize: "1.5rem",
             }}
           >
-            <FaUser size={22} className="text-white" />
-          </div>
-          <div className="text-start">
-            <h1
-              className="h3 mb-1 fw-bold"
-              style={{ color: "var(--text-primary)" }}
+            Barangay Real-Time Incident Monitoring System
+          </h4>
+
+          {/* Description */}
+          <p
+            className="text-center mx-auto"
+            style={{
+              fontSize: "15px",
+              maxWidth: "360px",
+              color: "rgba(255,255,255,0.9)",
+              lineHeight: "1.5",
+            }}
+          >
+            Register your barangay to start monitoring incidents and population
+            in real-time. Empower your community with BRIMS.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Panel - Scrollable with Floating Animations */}
+      <div className="col-12 col-lg-6 ms-lg-auto position-relative">
+        {/* Floating Elements - Only in right panel */}
+        <div className="floating-elements">
+          <div className="floating-icon floating-1">🏠</div>
+          <div className="floating-icon floating-2">📊</div>
+          <div className="floating-icon floating-3">🚨</div>
+          <div className="floating-icon floating-4">👥</div>
+          <div className="floating-icon floating-5">🌐</div>
+          <div className="floating-icon floating-6">🛡️</div>
+          <div className="floating-icon floating-7">📱</div>
+          <div className="floating-icon floating-8">🔒</div>
+        </div>
+
+        <div className="min-vh-100 d-flex align-items-center justify-content-center p-3 p-lg-4">
+          <div
+            className={`bg-white rounded-4 shadow-lg p-4 p-sm-5 w-100 form-container ${
+              isMounted ? "fade-in" : ""
+            }`}
+            style={{
+              maxWidth: "480px",
+              border: "1px solid var(--border-color)",
+              position: "relative",
+              zIndex: 2,
+              backdropFilter: "blur(10px)",
+              backgroundColor: "rgba(255, 255, 255, 0.95)",
+            }}
+          >
+            <h3
+              className="fw-bold text-center mb-2"
+              style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
             >
-              Account Settings
-            </h1>
-            <p className="text-muted mb-0 small">
-              {user?.name} • {getRoleDisplay(user?.role)}
+              Barangay Account Registration
+            </h3>
+            <p
+              className="text-center mb-4"
+              style={{ color: theme.textSecondary, fontSize: "14px" }}
+            >
+              Please fill out the form below to register your barangay.
             </p>
-          </div>
-        </div>
-      </div>
 
-      <div className="row g-3">
-        {/* Sidebar Navigation */}
-        <div className="col-12 col-lg-3">
-          <div
-            className="card border-0 shadow-sm h-100"
-            style={{
-              background: "linear-gradient(135deg, var(--background-white) 0%, #f8fdf8 100%)",
-              borderRadius: "12px",
-              border: "1px solid rgba(45, 90, 39, 0.1)",
-            }}
-          >
-            <div
-              className="card-header bg-transparent border-0 py-3 px-3"
-              style={{
-                background: "linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)",
-                borderBottom: "2px solid rgba(45, 90, 39, 0.3)",
-              }}
-            >
-              <h6
-                className="mb-0 fw-bold"
-                style={{ color: "var(--text-primary)" }}
-              >
-                Settings Menu
-              </h6>
+            {/* Approval Notice */}
+            <div className="alert alert-info text-center small mb-4">
+              <strong>Note:</strong> Your account will require admin approval.
+              You can login immediately but will have limited access until
+              approved.
             </div>
-            <div className="card-body p-3">
-              <div className="d-flex flex-column gap-2">
-                {/* Account Settings Tab */}
-                <button
-                  className={`btn text-start p-3 d-flex align-items-center position-relative ${
-                    activeTab === 'account' ? 'active' : ''
-                  }`}
-                  onClick={() => handleTabChange('account')}
-                  style={{
-                    background: activeTab === 'account' 
-                      ? 'linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)'
-                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)',
-                    border: activeTab === 'account'
-                      ? '1px solid var(--primary-color)'
-                      : '1px solid rgba(45, 90, 39, 0.2)',
-                    borderRadius: "8px",
-                    color: activeTab === 'account' ? 'white' : 'var(--text-primary)',
-                    fontWeight: activeTab === 'account' ? '600' : '500',
-                    transition: 'all 0.3s ease',
-                    boxShadow: activeTab === 'account'
-                      ? '0 4px 12px rgba(45, 90, 39, 0.25)'
-                      : '0 2px 6px rgba(45, 90, 39, 0.1)',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== 'account') {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(45, 90, 39, 0.1) 0%, rgba(51, 108, 53, 0.1) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(45, 90, 39, 0.3)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(45, 90, 39, 0.2)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== 'account') {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(45, 90, 39, 0.2)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 6px rgba(45, 90, 39, 0.1)';
-                    }
-                  }}
-                >
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      background: activeTab === 'account'
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : 'linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)',
-                      color: activeTab === 'account' ? 'white' : 'white',
-                      transition: 'all 0.3s ease',
-                    }}
-                  >
-                    <FaUser size={16} />
-                  </div>
-                  <div className="text-start">
-                    <div 
-                      className="fw-semibold"
-                      style={{ fontSize: '0.9rem' }}
-                    >
-                      Account Settings
-                    </div>
-                    <small 
-                      style={{ 
-                        opacity: activeTab === 'account' ? 0.9 : 0.7,
-                        fontSize: '0.75rem'
-                      }}
-                    >
-                      Update personal information
-                    </small>
-                  </div>
-                </button>
 
-                {/* Change Password Tab */}
-                <button
-                  className={`btn text-start p-3 d-flex align-items-center position-relative ${
-                    activeTab === 'password' ? 'active' : ''
-                  }`}
-                  onClick={() => handleTabChange('password')}
+            {/* Avatar Upload Section */}
+            <div className="text-center mb-4">
+              <div className="position-relative d-inline-block">
+                <div
+                  className="rounded-circle overflow-hidden border position-relative"
                   style={{
-                    background: activeTab === 'password' 
-                      ? 'linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)'
-                      : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)',
-                    border: activeTab === 'password'
-                      ? '1px solid var(--primary-color)'
-                      : '1px solid rgba(45, 90, 39, 0.2)',
-                    borderRadius: "8px",
-                    color: activeTab === 'password' ? 'white' : 'var(--text-primary)',
-                    fontWeight: activeTab === 'password' ? '600' : '500',
-                    transition: 'all 0.3s ease',
-                    boxShadow: activeTab === 'password'
-                      ? '0 4px 12px rgba(45, 90, 39, 0.25)'
-                      : '0 2px 6px rgba(45, 90, 39, 0.1)',
+                    width: "100px",
+                    height: "100px",
+                    cursor: "pointer",
+                    border: `3px solid ${theme.primary} !important`,
                   }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== 'password') {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(45, 90, 39, 0.1) 0%, rgba(51, 108, 53, 0.1) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(45, 90, 39, 0.3)';
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(45, 90, 39, 0.2)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== 'password') {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(45, 90, 39, 0.2)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 6px rgba(45, 90, 39, 0.1)';
-                    }
-                  }}
+                  onClick={handleAvatarClick}
                 >
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0"
+                  <img
+                    src={avatarPreview || DefaultAvatar}
+                    alt="Avatar Preview"
+                    className="w-100 h-100 object-fit-cover"
                     style={{
-                      width: "36px",
-                      height: "36px",
-                      background: activeTab === 'password'
-                        ? 'rgba(255, 255, 255, 0.2)'
-                        : 'linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%)',
-                      color: activeTab === 'password' ? 'white' : 'white',
-                      transition: 'all 0.3s ease',
+                      filter: avatarPreview ? "none" : "brightness(0.9)",
                     }}
+                  />
+                  <div
+                    className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+                    style={{
+                      backgroundColor: "rgba(0,0,0,0.3)",
+                      opacity: 0,
+                      transition: "opacity 0.3s ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = 0)}
                   >
-                    <FaLock size={16} />
+                    <FaCamera className="text-white" size={20} />
                   </div>
-                  <div className="text-start">
-                    <div 
-                      className="fw-semibold"
-                      style={{ fontSize: '0.9rem' }}
-                    >
-                      Change Password
-                    </div>
-                    <small 
-                      style={{ 
-                        opacity: activeTab === 'password' ? 0.9 : 0.7,
-                        fontSize: '0.75rem'
-                      }}
-                    >
-                      Update your password
-                    </small>
-                  </div>
-                </button>
-              </div>
+                </div>
 
-              {/* Quick Help Section */}
-              <div className="mt-4 pt-3 border-top border-light">
-                <div className="text-center">
-                  <small className="text-muted d-block mb-2">Need immediate help?</small>
+                {avatarPreview && (
                   <button
-                    className="btn btn-sm w-100 d-flex align-items-center justify-content-center"
-                    onClick={handleContactSupport}
+                    type="button"
+                    className="btn btn-sm btn-danger position-absolute rounded-circle p-1"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(45, 90, 39, 0.1) 0%, rgba(51, 108, 53, 0.1) 100%)',
-                      color: 'var(--primary-color)',
-                      border: '1px solid rgba(45, 90, 39, 0.2)',
-                      borderRadius: "6px",
-                      fontWeight: "500",
-                      fontSize: "0.8rem",
-                      transition: "all 0.3s ease",
+                      top: "-5px",
+                      right: "-5px",
+                      width: "24px",
+                      height: "24px",
+                      border: "2px solid white",
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(45, 90, 39, 0.3)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 3px 8px rgba(45, 90, 39, 0.2)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(45, 90, 39, 0.1) 0%, rgba(51, 108, 53, 0.1) 100%)';
-                      e.currentTarget.style.border = '1px solid rgba(45, 90, 39, 0.2)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeAvatar();
                     }}
                   >
-                    <FaEnvelope className="me-2" size={10} />
-                    Contact Support
+                    <FaTimes size={10} />
                   </button>
+                )}
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  accept="image/*"
+                  className="d-none"
+                />
+              </div>
+              <p className="small text-muted mt-2 mb-0">
+                Click on the avatar to upload a photo (optional)
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              {/* Full Name */}
+              <div className="mb-3 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaUser className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    name="name"
+                    placeholder="Full Name"
+                    value={form.name}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.name ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("name") === "success" ? "is-valid" : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.name
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    disabled={isSubmitting}
+                  />
+                  <span className="input-group-text bg-transparent border-start-0">
+                    {renderFieldIcon("name")}
+                  </span>
+                </div>
+                {fieldErrors.name && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.name}
+                  </div>
+                )}
+              </div>
+
+              {/* Barangay Name */}
+              <div className="mb-3 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaBuilding className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    name="barangayName"
+                    placeholder="Barangay Name"
+                    value={form.barangayName}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.barangayName ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("barangayName") === "success"
+                        ? "is-valid"
+                        : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.barangayName
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    disabled={isSubmitting}
+                  />
+                  <span className="input-group-text bg-transparent border-start-0">
+                    {renderFieldIcon("barangayName")}
+                  </span>
+                </div>
+                {fieldErrors.barangayName && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.barangayName}
+                  </div>
+                )}
+              </div>
+
+              {/* Position */}
+              <div className="mb-3 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaUser className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    name="position"
+                    placeholder="Position / Role"
+                    value={form.position}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.position ? "is-invalid" : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.position
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                {fieldErrors.position && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.position}
+                  </div>
+                )}
+              </div>
+
+              {/* Email */}
+              <div className="mb-3 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaEnvelope className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Email Address"
+                    value={form.email}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.email ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("email") === "success" ? "is-valid" : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.email
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    disabled={isSubmitting}
+                  />
+                  <span className="input-group-text bg-transparent border-start-0">
+                    {renderFieldIcon("email")}
+                  </span>
+                </div>
+                {fieldErrors.email && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.email}
+                  </div>
+                )}
+              </div>
+
+              {/* Password */}
+              <div className="mb-3 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaLock className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    placeholder="Password"
+                    value={form.password}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.password ? "is-invalid" : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.password
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    minLength={8}
+                    disabled={isSubmitting}
+                  />
+                  <span className="input-group-text bg-transparent border-start-0">
+                    <button
+                      type="button"
+                      className="btn btn-sm p-0 border-0 bg-transparent text-muted"
+                      onClick={() =>
+                        !isSubmitting && setShowPassword(!showPassword)
+                      }
+                      disabled={isSubmitting}
+                    >
+                      {showPassword ? (
+                        <FaEyeSlash size={14} />
+                      ) : (
+                        <FaEye size={14} />
+                      )}
+                    </button>
+                  </span>
+                </div>
+                {fieldErrors.password && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.password}
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="mb-3 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaLock className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    placeholder="Confirm Password"
+                    value={form.confirmPassword}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.confirmPassword ? "is-invalid" : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.confirmPassword
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    minLength={8}
+                    disabled={isSubmitting}
+                  />
+                  <span className="input-group-text bg-transparent border-start-0">
+                    <button
+                      type="button"
+                      className="btn btn-sm p-0 border-0 bg-transparent text-muted"
+                      onClick={() =>
+                        !isSubmitting &&
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      disabled={isSubmitting}
+                    >
+                      {showConfirmPassword ? (
+                        <FaEyeSlash size={14} />
+                      ) : (
+                        <FaEye size={14} />
+                      )}
+                    </button>
+                  </span>
+                </div>
+                {fieldErrors.confirmPassword && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.confirmPassword}
+                  </div>
+                )}
+              </div>
+
+              {/* Contact */}
+              <div className="mb-3 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaPhone className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    name="contact"
+                    placeholder="Contact Number (11 digits)"
+                    value={formatContact(form.contact)}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.contact ? "is-invalid" : ""
+                    } ${
+                      getFieldStatus("contact") === "success" ? "is-valid" : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.contact
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    maxLength={13} // 11 digits + 2 dashes
+                    disabled={isSubmitting}
+                  />
+                  <span className="input-group-text bg-transparent border-start-0">
+                    {renderFieldIcon("contact")}
+                  </span>
+                </div>
+                {fieldErrors.contact && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.contact}
+                  </div>
+                )}
+                <div className="form-text small mt-1">
+                  Format: 09XX-XXX-XXXX (11 digits total)
                 </div>
               </div>
-            </div>
+
+              {/* Municipality */}
+              <div className="mb-4 position-relative">
+                <div className="input-group">
+                  <span className="input-group-text bg-transparent border-end-0">
+                    <FaMapMarkerAlt className="text-muted" size={16} />
+                  </span>
+                  <input
+                    type="text"
+                    name="municipality"
+                    placeholder="Municipality"
+                    value={form.municipality}
+                    onChange={handleInputChange}
+                    className={`form-control border-start-0 ps-2 fw-semibold ${
+                      fieldErrors.municipality ? "is-invalid" : ""
+                    }`}
+                    style={{
+                      backgroundColor: theme.inputBg,
+                      color: theme.inputText,
+                      borderColor: fieldErrors.municipality
+                        ? "#dc3545"
+                        : theme.inputBorder,
+                    }}
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                {fieldErrors.municipality && (
+                  <div className="invalid-feedback d-block small mt-1">
+                    {fieldErrors.municipality}
+                  </div>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                className="btn-login w-100 py-2 fw-semibold shadow-sm d-flex align-items-center justify-content-center"
+                disabled={
+                  isSubmitting ||
+                  Object.keys(fieldErrors).some((key) => fieldErrors[key])
+                }
+              >
+                {isSubmitting ? (
+                  <>
+                    <FaSpinner className="spinner me-2" />
+                    Registering...
+                  </>
+                ) : (
+                  "Sign up"
+                )}
+              </button>
+
+              {/* Login Link */}
+              <p
+                className="text-center mt-3 small fw-semibold"
+                style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
+              >
+                Already have an account?{" "}
+                <Link
+                  to="/"
+                  className="fw-bold"
+                  style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
+                >
+                  Log In
+                </Link>
+              </p>
+            </form>
           </div>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="col-12 col-lg-9">
-          {/* Account Settings Tab */}
-          {activeTab === 'account' && (
-            <div
-              className="card border-0 shadow-sm h-100"
-              style={{
-                background: "linear-gradient(135deg, var(--background-white) 0%, #f8fdf8 100%)",
-                borderRadius: "12px",
-                border: "1px solid rgba(45, 90, 39, 0.1)",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div
-                className="card-header bg-transparent border-0 py-3 px-3"
-                style={{
-                  background: "linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)",
-                  borderBottom: "2px solid rgba(45, 90, 39, 0.3)",
-                }}
-              >
-                <div className="d-flex align-items-center">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-2"
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
-                      color: "white",
-                    }}
-                  >
-                    <FaUser size={14} />
-                  </div>
-                  <h6
-                    className="mb-0 fw-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Account Information
-                  </h6>
-                </div>
-              </div>
-              <div className="card-body p-3">
-                <form onSubmit={handleAccountUpdate}>
-                  <div className="row g-3">
-                    {/* Full Name */}
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
-                        Full Name *
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-transparent border-end-0">
-                          <FaUser className="text-muted" size={16} />
-                        </span>
-                        <input
-                          type="text"
-                          name="name"
-                          className={`form-control border-start-0 ps-2 fw-semibold ${
-                            formErrors.name ? 'is-invalid' : ''
-                          }`}
-                          value={accountForm.name}
-                          onChange={handleAccountInputChange}
-                          style={{
-                            backgroundColor: theme.inputBg,
-                            color: theme.inputText,
-                            borderColor: formErrors.name ? '#dc3545' : theme.inputBorder,
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                            transition: "all 0.3s ease",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.boxShadow = "0 0 0 0.2rem rgba(45, 90, 39, 0.25)";
-                            e.target.style.borderColor = theme.primary;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            e.target.style.borderColor = formErrors.name ? '#dc3545' : theme.inputBorder;
-                          }}
-                          required
-                        />
-                      </div>
-                      {formErrors.name && (
-                        <div className="invalid-feedback d-block small mt-1">
-                          {formErrors.name[0]}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Email Address */}
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
-                        Email Address *
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-transparent border-end-0">
-                          <FaEnvelope className="text-muted" size={16} />
-                        </span>
-                        <input
-                          type="email"
-                          name="email"
-                          className={`form-control border-start-0 ps-2 fw-semibold ${
-                            formErrors.email ? 'is-invalid' : ''
-                          }`}
-                          value={accountForm.email}
-                          onChange={handleAccountInputChange}
-                          style={{
-                            backgroundColor: theme.inputBg,
-                            color: theme.inputText,
-                            borderColor: formErrors.email ? '#dc3545' : theme.inputBorder,
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                            transition: "all 0.3s ease",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.boxShadow = "0 0 0 0.2rem rgba(45, 90, 39, 0.25)";
-                            e.target.style.borderColor = theme.primary;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            e.target.style.borderColor = formErrors.email ? '#dc3545' : theme.inputBorder;
-                          }}
-                          required
-                        />
-                      </div>
-                      {formErrors.email && (
-                        <div className="invalid-feedback d-block small mt-1">
-                          {formErrors.email[0]}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Contact Number - FIXED: Prevent letter input */}
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
-                        Contact Number *
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-transparent border-end-0">
-                          <FaPhone className="text-muted" size={16} />
-                        </span>
-                        <input
-                          type="text"
-                          name="contact"
-                          className={`form-control border-start-0 ps-2 fw-semibold ${
-                            formErrors.contact ? 'is-invalid' : ''
-                          }`}
-                          value={formatContact(accountForm.contact)}
-                          onChange={handleAccountInputChange}
-                          onKeyPress={(e) => {
-                            // Prevent any non-digit characters
-                            if (!/\d/.test(e.key) && e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab') {
-                              e.preventDefault();
-                            }
-                          }}
-                          style={{
-                            backgroundColor: theme.inputBg,
-                            color: theme.inputText,
-                            borderColor: formErrors.contact ? '#dc3545' : theme.inputBorder,
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                            transition: "all 0.3s ease",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.boxShadow = "0 0 0 0.2rem rgba(45, 90, 39, 0.25)";
-                            e.target.style.borderColor = theme.primary;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            e.target.style.borderColor = formErrors.contact ? '#dc3545' : theme.inputBorder;
-                          }}
-                          required
-                          maxLength={13} // 11 digits + 2 dashes
-                        />
-                      </div>
-                      {formErrors.contact && (
-                        <div className="invalid-feedback d-block small mt-1">
-                          {formErrors.contact[0]}
-                        </div>
-                      )}
-                      <div className="form-text small mt-1">
-                        Format: 09XX-XXX-XXXX (11 digits total)
-                      </div>
-                    </div>
-
-                    {/* Position */}
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
-                        Position *
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-transparent border-end-0">
-                          <FaIdCard className="text-muted" size={16} />
-                        </span>
-                        <input
-                          type="text"
-                          name="position"
-                          className={`form-control border-start-0 ps-2 fw-semibold ${
-                            formErrors.position ? 'is-invalid' : ''
-                          }`}
-                          value={accountForm.position}
-                          onChange={handleAccountInputChange}
-                          style={{
-                            backgroundColor: theme.inputBg,
-                            color: theme.inputText,
-                            borderColor: formErrors.position ? '#dc3545' : theme.inputBorder,
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                            transition: "all 0.3s ease",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.boxShadow = "0 0 0 0.2rem rgba(45, 90, 39, 0.25)";
-                            e.target.style.borderColor = theme.primary;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            e.target.style.borderColor = formErrors.position ? '#dc3545' : theme.inputBorder;
-                          }}
-                          required
-                        />
-                      </div>
-                      {formErrors.position && (
-                        <div className="invalid-feedback d-block small mt-1">
-                          {formErrors.position[0]}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Submit Button - FIXED: Uses correct loading state */}
-                    <div className="col-12">
-                      <button
-                        type="submit"
-                        className="btn w-100 d-flex align-items-center justify-content-center py-2 position-relative overflow-hidden"
-                        disabled={isAccountLoading}
-                        style={{
-                          background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          fontWeight: "600",
-                          fontSize: "0.875rem",
-                          transition: "all 0.3s ease",
-                          boxShadow: "0 2px 8px rgba(45, 90, 39, 0.2)",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isAccountLoading) {
-                            e.currentTarget.style.background = "linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%)";
-                            e.currentTarget.style.transform = "translateY(-2px)";
-                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(45, 90, 39, 0.3)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isAccountLoading) {
-                            e.currentTarget.style.background = "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)";
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(45, 90, 39, 0.2)";
-                          }
-                        }}
-                      >
-                        {isAccountLoading ? (
-                          <>
-                            <FaSpinner className="spinner me-2" size={12} />
-                            Updating Account...
-                          </>
-                        ) : (
-                          <>
-                            <FaSave className="me-2" size={12} />
-                            Update Account Information
-                            <FaArrowRight className="ms-2" size={10} />
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* Change Password Tab */}
-          {activeTab === 'password' && (
-            <div
-              className="card border-0 shadow-sm h-100"
-              style={{
-                background: "linear-gradient(135deg, var(--background-white) 0%, #f8fdf8 100%)",
-                borderRadius: "12px",
-                border: "1px solid rgba(45, 90, 39, 0.1)",
-                transition: "all 0.3s ease",
-              }}
-            >
-              <div
-                className="card-header bg-transparent border-0 py-3 px-3"
-                style={{
-                  background: "linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)",
-                  borderBottom: "2px solid rgba(45, 90, 39, 0.3)",
-                }}
-              >
-                <div className="d-flex align-items-center">
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center me-2"
-                    style={{
-                      width: "32px",
-                      height: "32px",
-                      background: "linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%)",
-                      color: "white",
-                    }}
-                  >
-                    <FaLock size={14} />
-                  </div>
-                  <h6
-                    className="mb-0 fw-bold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
-                    Change Password
-                  </h6>
-                </div>
-              </div>
-              <div className="card-body p-3">
-                <form onSubmit={handlePasswordChange}>
-                  <div className="row g-3">
-                    {/* Current Password */}
-                    <div className="col-12">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
-                        Current Password *
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-transparent border-end-0">
-                          <FaLock className="text-muted" size={16} />
-                        </span>
-                        <input
-                          type={showCurrentPassword ? "text" : "password"}
-                          name="current_password"
-                          className={`form-control border-start-0 ps-2 fw-semibold ${
-                            formErrors.current_password ? 'is-invalid' : ''
-                          }`}
-                          value={passwordForm.current_password}
-                          onChange={handlePasswordInputChange}
-                          placeholder="Enter current password"
-                          style={{
-                            backgroundColor: theme.inputBg,
-                            color: theme.inputText,
-                            borderColor: formErrors.current_password ? '#dc3545' : theme.inputBorder,
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                            transition: "all 0.3s ease",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.boxShadow = "0 0 0 0.2rem rgba(45, 90, 39, 0.25)";
-                            e.target.style.borderColor = theme.primary;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            e.target.style.borderColor = formErrors.current_password ? '#dc3545' : theme.inputBorder;
-                          }}
-                          required
-                        />
-                        <span className="input-group-text bg-transparent border-start-0">
-                          <button
-                            type="button"
-                            className="btn btn-sm p-0 border-0 bg-transparent text-muted"
-                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                            style={{
-                              transition: "all 0.3s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.color = theme.primary;
-                              e.currentTarget.style.transform = "scale(1.1)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.color = "";
-                              e.currentTarget.style.transform = "scale(1)";
-                            }}
-                          >
-                            {showCurrentPassword ? (
-                              <FaEyeSlash size={14} />
-                            ) : (
-                              <FaEye size={14} />
-                            )}
-                          </button>
-                        </span>
-                      </div>
-                      {formErrors.current_password && (
-                        <div className="invalid-feedback d-block small mt-1">
-                          {formErrors.current_password[0]}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* New Password */}
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
-                        New Password *
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-transparent border-end-0">
-                          <FaLock className="text-muted" size={16} />
-                        </span>
-                        <input
-                          type={showNewPassword ? "text" : "password"}
-                          name="new_password"
-                          className={`form-control border-start-0 ps-2 fw-semibold ${
-                            formErrors.new_password ? 'is-invalid' : ''
-                          }`}
-                          value={passwordForm.new_password}
-                          onChange={handlePasswordInputChange}
-                          placeholder="Enter new password"
-                          style={{
-                            backgroundColor: theme.inputBg,
-                            color: theme.inputText,
-                            borderColor: formErrors.new_password ? '#dc3545' : theme.inputBorder,
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                            transition: "all 0.3s ease",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.boxShadow = "0 0 0 0.2rem rgba(45, 90, 39, 0.25)";
-                            e.target.style.borderColor = theme.primary;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            e.target.style.borderColor = formErrors.new_password ? '#dc3545' : theme.inputBorder;
-                          }}
-                          required
-                          minLength={8}
-                        />
-                        <span className="input-group-text bg-transparent border-start-0">
-                          <button
-                            type="button"
-                            className="btn btn-sm p-0 border-0 bg-transparent text-muted"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                            style={{
-                              transition: "all 0.3s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.color = theme.primary;
-                              e.currentTarget.style.transform = "scale(1.1)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.color = "";
-                              e.currentTarget.style.transform = "scale(1)";
-                            }}
-                          >
-                            {showNewPassword ? (
-                              <FaEyeSlash size={14} />
-                            ) : (
-                              <FaEye size={14} />
-                            )}
-                          </button>
-                        </span>
-                      </div>
-                      {formErrors.new_password && (
-                        <div className="invalid-feedback d-block small mt-1">
-                          {formErrors.new_password[0]}
-                        </div>
-                      )}
-                      <div className="form-text small mt-1">
-                        Password must be at least 8 characters long
-                      </div>
-                    </div>
-
-                    {/* Confirm New Password */}
-                    <div className="col-12 col-md-6">
-                      <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
-                        Confirm New Password *
-                      </label>
-                      <div className="input-group">
-                        <span className="input-group-text bg-transparent border-end-0">
-                          <FaLock className="text-muted" size={16} />
-                        </span>
-                        <input
-                          type={showConfirmPassword ? "text" : "password"}
-                          name="confirm_password"
-                          className={`form-control border-start-0 ps-2 fw-semibold ${
-                            formErrors.confirm_password ? 'is-invalid' : ''
-                          }`}
-                          value={passwordForm.confirm_password}
-                          onChange={handlePasswordInputChange}
-                          placeholder="Confirm new password"
-                          style={{
-                            backgroundColor: theme.inputBg,
-                            color: theme.inputText,
-                            borderColor: formErrors.confirm_password ? '#dc3545' : theme.inputBorder,
-                            borderRadius: "6px",
-                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                            transition: "all 0.3s ease",
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.boxShadow = "0 0 0 0.2rem rgba(45, 90, 39, 0.25)";
-                            e.target.style.borderColor = theme.primary;
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.boxShadow = "0 2px 4px rgba(0, 0, 0, 0.1)";
-                            e.target.style.borderColor = formErrors.confirm_password ? '#dc3545' : theme.inputBorder;
-                          }}
-                          required
-                          minLength={8}
-                        />
-                        <span className="input-group-text bg-transparent border-start-0">
-                          <button
-                            type="button"
-                            className="btn btn-sm p-0 border-0 bg-transparent text-muted"
-                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            style={{
-                              transition: "all 0.3s ease",
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.color = theme.primary;
-                              e.currentTarget.style.transform = "scale(1.1)";
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.color = "";
-                              e.currentTarget.style.transform = "scale(1)";
-                            }}
-                          >
-                            {showConfirmPassword ? (
-                              <FaEyeSlash size={14} />
-                            ) : (
-                              <FaEye size={14} />
-                            )}
-                          </button>
-                        </span>
-                      </div>
-                      {formErrors.confirm_password && (
-                        <div className="invalid-feedback d-block small mt-1">
-                          {formErrors.confirm_password[0]}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Submit Button - FIXED: Uses correct loading state */}
-                    <div className="col-12">
-                      <button
-                        type="submit"
-                        className="btn w-100 d-flex align-items-center justify-content-center py-2 position-relative overflow-hidden"
-                        disabled={isPasswordLoading}
-                        style={{
-                          background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          fontWeight: "600",
-                          fontSize: "0.875rem",
-                          transition: "all 0.3s ease",
-                          boxShadow: "0 2px 8px rgba(45, 90, 39, 0.2)",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isPasswordLoading) {
-                            e.currentTarget.style.background = "linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%)";
-                            e.currentTarget.style.transform = "translateY(-2px)";
-                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(45, 90, 39, 0.3)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isPasswordLoading) {
-                            e.currentTarget.style.background = "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)";
-                            e.currentTarget.style.transform = "translateY(0)";
-                            e.currentTarget.style.boxShadow = "0 2px 8px rgba(45, 90, 39, 0.2)";
-                          }
-                        }}
-                      >
-                        {isPasswordLoading ? (
-                          <>
-                            <FaSpinner className="spinner me-2" size={12} />
-                            Changing Password...
-                          </>
-                        ) : (
-                          <>
-                            <FaKey className="me-2" size={12} />
-                            Change Password
-                            <FaArrowRight className="ms-2" size={10} />
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Add custom styles */}
       <style jsx>{`
-        .input-group-text {
-          border-color: ${theme.inputBorder} !important;
-          background-color: ${theme.inputBg} !important;
+        /* Form Container Animation */
+        .form-container {
+          opacity: 0;
+          transform: translateY(20px);
+          transition: all 0.6s ease-in-out;
+        }
+
+        .form-container.fade-in {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        /* Floating Elements - Only in right panel */
+        .floating-elements {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .floating-icon {
+          position: absolute;
+          font-size: 1.5rem;
+          opacity: 0.12;
+          animation: float 8s ease-in-out infinite;
+          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+
+        /* Desktop positions */
+        .floating-1 {
+          top: 15%;
+          left: 8%;
+          animation-delay: 0s;
+        }
+        .floating-2 {
+          top: 20%;
+          right: 10%;
+          animation-delay: 1s;
+        }
+        .floating-3 {
+          bottom: 30%;
+          left: 10%;
+          animation-delay: 2s;
+        }
+        .floating-4 {
+          bottom: 15%;
+          right: 8%;
+          animation-delay: 3s;
+        }
+        .floating-5 {
+          top: 40%;
+          left: 15%;
+          animation-delay: 1.5s;
+        }
+        .floating-6 {
+          top: 35%;
+          right: 15%;
+          animation-delay: 2.5s;
+        }
+        .floating-7 {
+          bottom: 45%;
+          right: 18%;
+          animation-delay: 0.5s;
+        }
+        .floating-8 {
+          top: 65%;
+          left: 12%;
+          animation-delay: 3.5s;
+        }
+
+        /* Button styles */
+        .btn-login {
+          background: linear-gradient(135deg, #2d5a27, #3a6b32);
+          color: white;
+          border: none;
+          border-radius: 8px;
           transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
         }
 
-        .input-group .form-control:focus {
-          box-shadow: 0 0 0 0.2rem rgba(45, 90, 39, 0.25) !important;
-          border-color: ${theme.primary} !important;
+        .btn-login:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(45, 90, 39, 0.3);
         }
 
-        .input-group .form-control {
-          transition: all 0.3s ease;
+        .btn-login:active:not(:disabled) {
+          transform: translateY(0);
         }
 
-        .input-group .form-control:hover {
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+        .btn-login:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
 
+        .btn-login::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+          );
+          transition: left 0.5s;
+        }
+
+        .btn-login:hover::before {
+          left: 100%;
+        }
+
+        /* Spinner Animation */
         .spinner {
           animation: spin 1s linear infinite;
         }
 
+        /* Input group custom styles */
+        .input-group-text {
+          border-color: var(--input-border) !important;
+          background-color: var(--input-bg) !important;
+        }
+
+        .input-group .form-control:focus {
+          box-shadow: none;
+          border-color: var(--input-border);
+        }
+
+        .input-group .form-control.is-invalid {
+          border-color: #dc3545;
+        }
+
+        .input-group .form-control.is-valid {
+          border-color: #198754;
+        }
+
+        /* Animations */
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0px) rotate(0deg) scale(1);
+          }
+          33% {
+            transform: translateY(-12px) rotate(4deg) scale(1.05);
+          }
+          66% {
+            transform: translateY(8px) rotate(-2deg) scale(0.98);
+          }
+        }
+
         @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
 
-        /* Enhanced hover effects for all interactive elements */
-        .card {
-          transition: all 0.3s ease;
+        /* Mobile Responsive */
+        @media (max-width: 991px) {
+          .floating-elements {
+            display: none;
+          }
+
+          .form-container {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+          }
         }
 
-        .card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(45, 90, 39, 0.15) !important;
+        @media (min-width: 992px) {
+          .floating-icon {
+            font-size: 1.8rem;
+            opacity: 0.1;
+          }
         }
 
-        .input-group:hover .input-group-text {
-          background-color: rgba(45, 90, 39, 0.05) !important;
-          border-color: rgba(45, 90, 39, 0.3) !important;
+        @media (max-width: 768px) {
+          .bg-white {
+            backdrop-filter: none;
+            background-color: white !important;
+          }
+
+          .form-control {
+            font-size: 16px;
+          }
+
+          .input-group-text {
+            padding: 0.5rem 0.75rem;
+          }
+        }
+
+        @media (max-width: 576px) {
+          .form-container {
+            padding: 1.5rem !important;
+          }
+
+          .input-group-text {
+            padding: 0.375rem 0.75rem;
+          }
         }
       `}</style>
     </div>
   );
-};
-
-export default Settings;
+}
