@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useNavigate, useLocation } from "react-router-dom";
 import { showAlert, showToast } from "../services/notificationService";
 import logo from "../assets/images/logo.png";
 import textLogo from "../assets/images/text-logo-no-bg.png";
 
 const TopBar = ({ onToggleSidebar }) => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [avatarLoading, setAvatarLoading] = useState(true);
   const [avatarError, setAvatarError] = useState(false);
 
@@ -16,6 +19,13 @@ const TopBar = ({ onToggleSidebar }) => {
       setAvatarError(false);
     }
   }, [user?.avatar]);
+
+  // Function to handle navigation and close dropdown
+  const handleNavigation = (path) => {
+    navigate(path);
+    // Close the dropdown by triggering a click on the document body
+    document.body.click();
+  };
 
   const handleLogout = async () => {
     // First confirmation dialog - blocks background interaction
@@ -194,6 +204,7 @@ const TopBar = ({ onToggleSidebar }) => {
       {/* Sidebar Toggle */}
       <button
         className="btn btn-link btn-sm order-1 order-lg-0 me-2 me-lg-0"
+        id="sidebarToggle"
         onClick={onToggleSidebar}
         style={{ color: "var(--background-white)" }}
       >
@@ -300,22 +311,31 @@ const TopBar = ({ onToggleSidebar }) => {
             <li>
               <hr className="dropdown-divider" />
             </li>
+            {/* Profile Link */}
             <li>
-              <a className="dropdown-item" href="#!">
+              <button 
+                className="dropdown-item custom-dropdown-item" 
+                onClick={() => handleNavigation("/profile")}
+              >
                 <i className="fas fa-user me-2"></i>Profile
-              </a>
+              </button>
             </li>
+            {/* Settings Link */}
             <li>
-              <a className="dropdown-item" href="#!">
+              <button 
+                className="dropdown-item custom-dropdown-item" 
+                onClick={() => handleNavigation("/settings")}
+              >
                 <i className="fas fa-cog me-2"></i>Settings
-              </a>
+              </button>
             </li>
             <li>
               <hr className="dropdown-divider" />
             </li>
+            {/* Logout Button - UPDATED with better hover effect */}
             <li>
               <button
-                className="dropdown-item text-danger"
+                className="dropdown-item custom-dropdown-item logout-item"
                 onClick={handleLogout}
               >
                 <i className="fas fa-sign-out-alt me-2"></i>Logout
@@ -324,6 +344,69 @@ const TopBar = ({ onToggleSidebar }) => {
           </ul>
         </li>
       </ul>
+
+      {/* Custom CSS for dropdown hover effects */}
+      <style jsx>{`
+        .custom-dropdown-item {
+          background: none;
+          border: none;
+          width: 100%;
+          text-align: left;
+          cursor: pointer;
+          padding: 0.375rem 1rem;
+          color: #212529;
+          transition: all 0.15s ease-in-out;
+        }
+
+        .custom-dropdown-item:hover {
+          background-color: #f8f9fa;
+          color: #16181b;
+        }
+
+        .custom-dropdown-item:focus {
+          background-color: #f8f9fa;
+          color: #16181b;
+          outline: none;
+        }
+
+        /* UPDATED: Better logout button hover effect */
+        .logout-item {
+          color: #dc3545 !important;
+        }
+
+        .logout-item:hover {
+          background-color: rgba(220, 53, 69, 0.1) !important;
+          color: #dc3545 !important;
+        }
+
+        .logout-item:focus {
+          background-color: rgba(220, 53, 69, 0.1) !important;
+          color: #dc3545 !important;
+          outline: none;
+        }
+
+        /* Ensure the dropdown items have proper spacing and alignment */
+        .dropdown-menu .custom-dropdown-item {
+          display: block;
+          clear: both;
+          font-weight: 400;
+          text-decoration: none;
+          white-space: nowrap;
+          border: 0;
+        }
+
+        /* Restore Bootstrap-like hover transitions */
+        .dropdown-menu {
+          border: 1px solid rgba(0, 0, 0, 0.15);
+          border-radius: 0.375rem;
+          box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .dropdown-menu .custom-dropdown-item:active {
+          background-color: #0d6efd;
+          color: white;
+        }
+      `}</style>
     </nav>
   );
 };

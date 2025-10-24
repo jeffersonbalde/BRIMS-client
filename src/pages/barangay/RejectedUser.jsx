@@ -1,22 +1,22 @@
-// components/dashboards/PendingApproval.jsx
-import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  FaClock, 
-  FaEnvelope, 
-  FaPhone, 
-  FaInfoCircle, 
-  FaUserCheck, 
-  FaListAlt, 
-  FaShieldAlt,
-  FaArrowRight,
+// components/dashboards/RejectedUser.jsx
+import React from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  FaTimesCircle,
+  FaEnvelope,
+  FaCalendarAlt,
   FaUser,
   FaMapMarkerAlt,
   FaBuilding,
-  FaIdCard
-} from 'react-icons/fa';
+  FaIdCard,
+  FaExclamationTriangle,
+  FaInfoCircle,
+  FaShieldAlt,
+  FaArrowRight,
+  FaPhone,
+} from "react-icons/fa";
 
-const PendingApproval = () => {
+const RejectedUser = () => {
   const { user } = useAuth();
 
   const handleContactSupport = () => {
@@ -27,13 +27,13 @@ const PendingApproval = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Not specified';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    if (!dateString) return "Not specified";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -47,32 +47,32 @@ const PendingApproval = () => {
             style={{
               width: "50px",
               height: "50px",
-              background: "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)",
-              boxShadow: "0 4px 15px rgba(255, 167, 38, 0.3)",
+              background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)",
+              boxShadow: "0 4px 15px rgba(255, 107, 107, 0.3)",
               transition: "all 0.3s ease",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "scale(1.1)";
               e.currentTarget.style.boxShadow =
-                "0 6px 20px rgba(255, 167, 38, 0.4)";
+                "0 6px 20px rgba(255, 107, 107, 0.4)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "scale(1)";
               e.currentTarget.style.boxShadow =
-                "0 4px 15px rgba(255, 167, 38, 0.3)";
+                "0 4px 15px rgba(255, 107, 107, 0.3)";
             }}
           >
-            <FaClock size={22} className="text-white" />
+            <FaTimesCircle size={22} className="text-white" />
           </div>
           <div className="text-start">
             <h1
               className="h3 mb-1 fw-bold"
               style={{ color: "var(--text-primary)" }}
             >
-              Account Pending Approval
+              Account Registration Rejected
             </h1>
             <p className="text-muted mb-0 small">
-              Your barangay registration is under review
+              Your barangay registration was not approved
             </p>
           </div>
         </div>
@@ -80,7 +80,7 @@ const PendingApproval = () => {
 
       {/* Compact Grid Layout with Enhanced Colors */}
       <div className="row g-3">
-        {/* Approval Status Card - Enhanced */}
+        {/* Rejection Details Card - Enhanced */}
         <div className="col-12 col-lg-8">
           <div
             className="card border-0 shadow-sm h-100"
@@ -116,65 +116,65 @@ const PendingApproval = () => {
                     width: "32px",
                     height: "32px",
                     background:
-                      "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)",
+                      "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)",
                     color: "white",
                   }}
                 >
-                  <FaClock size={14} />
+                  <FaExclamationTriangle size={14} />
                 </div>
                 <h6
                   className="mb-0 fw-bold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Approval Status
+                  Rejection Details
                 </h6>
               </div>
             </div>
             <div className="card-body p-3">
               <div className="row g-2">
-                {/* Enhanced Registration Date */}
+                {/* Enhanced Rejection Date */}
                 <div className="col-12 col-sm-6">
                   <div
                     className="d-flex align-items-center p-2 rounded-2 position-relative overflow-hidden"
                     style={{
                       background:
-                        "linear-gradient(135deg, rgba(255, 167, 38, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%)",
-                      border: "1px solid rgba(255, 167, 38, 0.3)",
-                      boxShadow: "0 2px 6px rgba(255, 167, 38, 0.15)",
+                        "linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(238, 90, 82, 0.1) 100%)",
+                      border: "1px solid rgba(255, 107, 107, 0.3)",
+                      boxShadow: "0 2px 6px rgba(255, 107, 107, 0.15)",
                       transition: "all 0.3s ease",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background =
-                        "linear-gradient(135deg, rgba(255, 167, 38, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%)";
+                        "linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(238, 90, 82, 0.15) 100%)";
                       e.currentTarget.style.borderColor =
-                        "rgba(255, 167, 38, 0.4)";
+                        "rgba(255, 107, 107, 0.4)";
                       e.currentTarget.style.boxShadow =
-                        "0 4px 12px rgba(255, 167, 38, 0.25)";
+                        "0 4px 12px rgba(255, 107, 107, 0.25)";
                       e.currentTarget.style.transform = "translateY(-1px)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background =
-                        "linear-gradient(135deg, rgba(255, 167, 38, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%)";
+                        "linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(238, 90, 82, 0.1) 100%)";
                       e.currentTarget.style.borderColor =
-                        "rgba(255, 167, 38, 0.3)";
+                        "rgba(255, 107, 107, 0.3)";
                       e.currentTarget.style.boxShadow =
-                        "0 2px 6px rgba(255, 167, 38, 0.15)";
+                        "0 2px 6px rgba(255, 107, 107, 0.15)";
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
-                    <FaClock
-                      className="text-warning me-2 flex-shrink-0"
+                    <FaCalendarAlt
+                      className="text-danger me-2 flex-shrink-0"
                       size={14}
                     />
                     <div>
                       <small className="text-muted d-block fw-semibold">
-                        Registered On
+                        Rejected On
                       </small>
                       <span
                         className="fw-semibold small"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        {formatDate(user?.created_at)}
+                        {formatDate(user?.rejected_at)}
                       </span>
                     </div>
                   </div>
@@ -186,32 +186,32 @@ const PendingApproval = () => {
                     className="d-flex align-items-center p-2 rounded-2 position-relative overflow-hidden"
                     style={{
                       background:
-                        "linear-gradient(135deg, rgba(255, 167, 38, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%)",
-                      border: "1px solid rgba(255, 167, 38, 0.3)",
-                      boxShadow: "0 2px 6px rgba(255, 167, 38, 0.15)",
+                        "linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(200, 35, 51, 0.1) 100%)",
+                      border: "1px solid rgba(220, 53, 69, 0.3)",
+                      boxShadow: "0 2px 6px rgba(220, 53, 69, 0.15)",
                       transition: "all 0.3s ease",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background =
-                        "linear-gradient(135deg, rgba(255, 167, 38, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%)";
+                        "linear-gradient(135deg, rgba(220, 53, 69, 0.15) 0%, rgba(200, 35, 51, 0.15) 100%)";
                       e.currentTarget.style.borderColor =
-                        "rgba(255, 167, 38, 0.4)";
+                        "rgba(220, 53, 69, 0.4)";
                       e.currentTarget.style.boxShadow =
-                        "0 4px 12px rgba(255, 167, 38, 0.25)";
+                        "0 4px 12px rgba(220, 53, 69, 0.25)";
                       e.currentTarget.style.transform = "translateY(-1px)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background =
-                        "linear-gradient(135deg, rgba(255, 167, 38, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%)";
+                        "linear-gradient(135deg, rgba(220, 53, 69, 0.1) 0%, rgba(200, 35, 51, 0.1) 100%)";
                       e.currentTarget.style.borderColor =
-                        "rgba(255, 167, 38, 0.3)";
+                        "rgba(220, 53, 69, 0.3)";
                       e.currentTarget.style.boxShadow =
-                        "0 2px 6px rgba(255, 167, 38, 0.15)";
+                        "0 2px 6px rgba(220, 53, 69, 0.15)";
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
-                    <FaClock
-                      className="text-warning me-2 flex-shrink-0"
+                    <FaTimesCircle
+                      className="text-danger me-2 flex-shrink-0"
                       size={14}
                     />
                     <div>
@@ -222,18 +222,18 @@ const PendingApproval = () => {
                         className="badge small px-2 py-1 fw-semibold"
                         style={{
                           background:
-                            "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)",
+                            "linear-gradient(135deg, #dc3545 0%, #c82333 100%)",
                           color: "white",
-                          boxShadow: "0 2px 8px rgba(255, 167, 38, 0.3)",
+                          boxShadow: "0 2px 8px rgba(220, 53, 69, 0.3)",
                         }}
                       >
-                        Pending Review
+                        Rejected
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Enhanced Status Message */}
+                {/* Enhanced Rejection Reason */}
                 <div className="col-12">
                   <div
                     className="rounded-2 p-2 mt-2 position-relative overflow-hidden"
@@ -278,16 +278,15 @@ const PendingApproval = () => {
                         className="fw-semibold"
                         style={{ color: "var(--text-primary)" }}
                       >
-                        Current Status
+                        Rejection Reason
                       </small>
                     </div>
                     <p
                       className="mb-0 small text-muted"
                       style={{ lineHeight: "1.4" }}
                     >
-                      Thank you for registering your barangay account with the Barangay Real-time Incident Monitoring System (BRIMS). 
-                      Your application is currently being reviewed by the municipal administrator to ensure all information is accurate 
-                      and complete. This verification process typically takes 1-2 business days.
+                      {user?.rejection_reason ||
+                        "No specific reason was provided for the rejection of your account registration."}
                     </p>
                   </div>
                 </div>
@@ -357,7 +356,7 @@ const PendingApproval = () => {
                 }}
               >
                 <FaEnvelope className="me-2" size={12} />
-                Contact Administrator
+                Contact Support
                 <FaArrowRight className="ms-2" size={10} />
               </button>
 
@@ -452,7 +451,7 @@ const PendingApproval = () => {
                     color: "#5da55a",
                   },
                   {
-                    icon: FaPhone,
+                    icon: FaShieldAlt,
                     label: "Contact",
                     value: user?.contact,
                     color: "#6fbf67",
@@ -513,7 +512,7 @@ const PendingApproval = () => {
           </div>
         </div>
 
-        {/* Approval Process Card - Enhanced */}
+        {/* Next Steps Card - Enhanced */}
         <div className="col-12 col-lg-6">
           <div
             className="card border-0 shadow-sm h-100"
@@ -539,6 +538,7 @@ const PendingApproval = () => {
               style={{
                 background:
                   "linear-gradient(135deg, rgba(255, 167, 38, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%)",
+
                 borderBottom: "2px solid rgba(255, 167, 38, 0.2)",
               }}
             >
@@ -553,13 +553,13 @@ const PendingApproval = () => {
                     color: "white",
                   }}
                 >
-                  <FaListAlt size={12} />
+                  <FaInfoCircle size={12} />
                 </div>
                 <h6
                   className="mb-0 fw-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Approval Process
+                  Next Steps
                 </h6>
               </div>
             </div>
@@ -568,26 +568,26 @@ const PendingApproval = () => {
                 {[
                   {
                     step: "1",
-                    title: "Document Verification",
-                    description: "Municipal administrator reviews your barangay credentials and registration details",
-                    color: "#ffa726",
+                    title: "Review Reason",
+                    description: "Understand why your application was rejected",
+                    color: "#ff6b6b",
                   },
                   {
                     step: "2",
-                    title: "Account Approval",
-                    description: "Account is activated with appropriate permissions and access levels",
+                    title: "Contact Admin",
+                    description: "Get clarification and guidance",
                     color: "#4a8c47",
                   },
                   {
                     step: "3",
-                    title: "System Access",
-                    description: "Full access granted to BRIMS features for real-time incident monitoring",
+                    title: "Gather Documents",
+                    description: "Prepare required information",
                     color: "#5da55a",
                   },
                   {
                     step: "4",
-                    title: "Email Notification",
-                    description: "You will receive confirmation once your account is approved",
+                    title: "Follow Up",
+                    description: "Complete necessary steps",
                     color: "#6fbf67",
                   },
                 ].map((item, index) => (
@@ -688,8 +688,8 @@ const PendingApproval = () => {
               <div className="row align-items-center">
                 <div className="col">
                   <p className="mb-0 small text-muted">
-                    <strong>Note:</strong> Your account has limited access while pending approval. 
-                    You will receive full system access once your account is approved by the municipal administrator.
+                    <strong>Note:</strong> Your account has limited access.
+                    Contact the municipal administrator to resolve this issue.
                   </p>
                 </div>
                 <div className="col-auto">
@@ -731,4 +731,4 @@ const PendingApproval = () => {
   );
 };
 
-export default PendingApproval;
+export default RejectedUser;

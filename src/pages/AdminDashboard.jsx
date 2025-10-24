@@ -1,9 +1,9 @@
-// components/dashboards/AdminDashboard.jsx
+// components/dashboards/AdminDashboard.jsx - FIXED VERSION
 import React from 'react';
 
 const AdminDashboard = () => {
   return (
-    <div>
+    <div className="container-fluid px-4"> {/* ADD THIS CONTAINER */}
       <h1 className="mb-4">Municipal Administration Dashboard</h1>
       
       {/* Municipal Overview Cards */}

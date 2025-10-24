@@ -1,4 +1,4 @@
-// contexts/AuthContext.jsx - Fixed version
+// contexts/AuthContext.jsx - Updated with simpler approach
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext();
@@ -9,16 +9,39 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(
     () => localStorage.getItem("access_token") || null
   );
+  const [pendingApprovals, setPendingApprovals] = useState(0);
 
-  // In AuthContext.jsx, update the formatAvatarUrl function:
   const formatAvatarUrl = (avatarPath) => {
     if (!avatarPath) return null;
-
-    // Extract just the filename from the path
     const filename = avatarPath.split("/").pop();
-
-    // Use the API avatar endpoint
     return `${import.meta.env.VITE_LARAVEL_API}/avatar/${filename}`;
+  };
+
+  // Function to fetch pending approvals count using existing endpoint
+  const fetchPendingApprovalsCount = async (authToken) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_LARAVEL_API}/admin/pending-users`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        // Count the users from the existing endpoint
+        const count = data.users ? data.users.length : 0;
+        setPendingApprovals(count);
+      } else {
+        setPendingApprovals(0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch pending approvals count:", error);
+      setPendingApprovals(0);
+    }
   };
 
   // Check authentication on app start
@@ -41,21 +64,19 @@ export const AuthProvider = ({ children }) => {
 
         if (res.ok) {
           const userData = await res.json();
-          console.log("User data from API:", userData);
-          console.log("Avatar URL:", userData.user?.avatar);
-
-          // Format the user data with proper avatar URL
           const formattedUser = {
             ...userData.user,
             avatar: formatAvatarUrl(userData.user?.avatar),
           };
 
-          console.log("Formatted avatar URL:", formattedUser.avatar);
-
           setUser(formattedUser);
           setToken(storedToken);
+
+          // Fetch pending approvals count if user is admin
+          if (userData.user?.role === "admin") {
+            await fetchPendingApprovalsCount(storedToken);
+          }
         } else {
-          console.log("Token invalid - clearing auth");
           if (res.status === 401) {
             setUser(null);
             setToken(null);
@@ -91,7 +112,6 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem("access_token", data.access_token);
 
-      // Format user data with proper avatar URL
       const formattedUser = {
         ...data.user,
         avatar: formatAvatarUrl(data.user?.avatar),
@@ -99,6 +119,11 @@ export const AuthProvider = ({ children }) => {
 
       setToken(data.access_token);
       setUser(formattedUser);
+
+      // Fetch pending approvals count if user is admin
+      if (data.user?.role === "admin") {
+        await fetchPendingApprovalsCount(data.access_token);
+      }
 
       return {
         success: true,
@@ -128,21 +153,69 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("access_token");
       setUser(null);
       setToken(null);
+      setPendingApprovals(0);
     }
   };
 
-  const value = {
-    user,
-    login,
-    logout,
-    token,
-    loading,
-    isAuthenticated: !!user && !!token,
-    isAdmin: user?.role === "admin",
-    isBarangay: user?.role === "barangay",
-    isApproved: user?.is_approved === true,
-    isPending: user?.role === "barangay" && user?.is_approved === false,
+  // Function to refresh pending approvals count
+  const refreshPendingApprovals = async () => {
+    if (token && user?.role === "admin") {
+      await fetchPendingApprovalsCount(token);
+    }
   };
+
+const refreshUserData = async () => {
+  const storedToken = localStorage.getItem("access_token");
+  
+  if (!storedToken) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`${import.meta.env.VITE_LARAVEL_API}/user`, {
+      headers: {
+        Authorization: `Bearer ${storedToken}`,
+        Accept: "application/json",
+      },
+    });
+
+    if (res.ok) {
+      const userData = await res.json();
+      const formattedUser = {
+        ...userData.user,
+        avatar: formatAvatarUrl(userData.user?.avatar),
+      };
+
+      setUser(formattedUser);
+
+      // Fetch pending approvals count if user is admin
+      if (userData.user?.role === 'admin') {
+        await fetchPendingApprovalsCount(storedToken);
+      }
+      
+      return formattedUser; // Return the updated user data
+    }
+  } catch (error) {
+    console.error("User data refresh failed:", error);
+    throw error;
+  }
+};
+// Add refreshUserData to the context value
+const value = {
+  user,
+  login,
+  logout,
+  token,
+  loading,
+  pendingApprovals,
+  refreshPendingApprovals,
+  refreshUserData, // Add this line
+  isAuthenticated: !!user && !!token,
+  isAdmin: user?.role === "admin",
+  isBarangay: user?.role === "barangay",
+  isApproved: user?.status === "approved",
+  isPending: user?.status === "pending"
+};
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

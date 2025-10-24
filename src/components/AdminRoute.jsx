@@ -1,9 +1,9 @@
-// components/PublicRoute.jsx - UPDATED
+// components/AdminRoute.jsx
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import LoadingAuthentication from './LoadingAuthentication';
 
-const PublicRoute = ({ children }) => {
+const AdminRoute = ({ children }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
 
   // Show loading while checking authentication
@@ -11,16 +11,17 @@ const PublicRoute = ({ children }) => {
     return <LoadingAuthentication />;
   }
 
-  // Redirect to appropriate dashboard based on role
-  if (isAuthenticated) {
-    if (isAdmin) {
-      return <Navigate to="/dashboard" replace />;
-    } else {
-      return <Navigate to="/dashboard" replace />;
-    }
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Redirect to dashboard if not admin
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 };
 
-export default PublicRoute;
+export default AdminRoute;

@@ -1,4 +1,4 @@
-// pages/Settings.jsx - FIXED with Proper Contact Validation and Loading States
+// pages/Settings.jsx - FIXED with Contact Validation and Separate Loading States
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { showAlert, showToast } from '../services/notificationService';
@@ -23,8 +23,8 @@ import {
 const Settings = () => {
   const { user, token, refreshUserData } = useAuth();
   const [activeTab, setActiveTab] = useState('account');
-  const [isAccountLoading, setIsAccountLoading] = useState(false);
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
+  const [isAccountLoading, setIsAccountLoading] = useState(false); // Separate state for account
+  const [isPasswordLoading, setIsPasswordLoading] = useState(false); // Separate state for password
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -85,7 +85,7 @@ const Settings = () => {
     }
   };
 
-  // Handle contact number input - numbers only and max 11 digits
+  // Handle contact number input - numbers only and max 11 digits (FROM REGISTER.JSX)
   const handleContactInput = (e) => {
     const { name, value } = e.target;
     
@@ -150,7 +150,7 @@ const Settings = () => {
     }
   };
 
-  // Validate contact number before submission
+  // Validate contact number before submission (FROM REGISTER.JSX)
   const validateContactNumber = (contact) => {
     if (!contact) {
       return 'Contact number is required';
@@ -165,6 +165,19 @@ const Settings = () => {
     }
     
     return null;
+  };
+
+  // Format contact number for display (XXX-XXX-XXXX)
+  const formatContact = (value) => {
+    if (!value) return '';
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6)
+      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
+    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(
+      6,
+      11
+    )}`;
   };
 
   // Update account information with confirmation and loading modal
@@ -183,7 +196,7 @@ const Settings = () => {
       return;
     }
 
-    // Validate contact number
+    // Validate contact number (NEW VALIDATION)
     const contactError = validateContactNumber(accountForm.contact);
     if (contactError) {
       setFormErrors(prev => ({ ...prev, contact: [contactError] }));
@@ -221,7 +234,7 @@ const Settings = () => {
       }
     });
 
-    setIsAccountLoading(true);
+    setIsAccountLoading(true); // Use specific account loading state
     setFormErrors({});
 
     try {
@@ -262,7 +275,7 @@ const Settings = () => {
       console.error('Account update error:', error);
       showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
     } finally {
-      setIsAccountLoading(false);
+      setIsAccountLoading(false); // Use specific account loading state
       // Re-enable form inputs
       const form = e.target;
       const inputs = form.querySelectorAll('input, button, textarea, select');
@@ -308,7 +321,7 @@ const Settings = () => {
       }
     });
 
-    setIsPasswordLoading(true);
+    setIsPasswordLoading(true); // Use specific password loading state
     setFormErrors({});
 
     // Client-side validation
@@ -366,7 +379,7 @@ const Settings = () => {
       console.error('Password change error:', error);
       showAlert.error('Network Error', 'Unable to connect to server. Please try again.');
     } finally {
-      setIsPasswordLoading(false);
+      setIsPasswordLoading(false); // Use specific password loading state
       // Re-enable form inputs
       const form = e.target;
       const inputs = form.querySelectorAll('input, button, textarea, select');
@@ -382,19 +395,6 @@ const Settings = () => {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setFormErrors({});
-  };
-
-  // Format contact number for display (XXX-XXX-XXXX)
-  const formatContact = (value) => {
-    if (!value) return '';
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6)
-      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(
-      6,
-      11
-    )}`;
   };
 
   return (
@@ -771,7 +771,7 @@ const Settings = () => {
                       )}
                     </div>
 
-                    {/* Contact Number - FIXED: Prevent letter input */}
+                    {/* Contact Number - FIXED: Added validation and formatting */}
                     <div className="col-12 col-md-6">
                       <label className="form-label small fw-semibold" style={{ color: "var(--text-primary)" }}>
                         Contact Number *
@@ -872,7 +872,7 @@ const Settings = () => {
                       <button
                         type="submit"
                         className="btn w-100 d-flex align-items-center justify-content-center py-2 position-relative overflow-hidden"
-                        disabled={isAccountLoading}
+                        disabled={isAccountLoading} // Use specific account loading state
                         style={{
                           background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
                           color: "white",
@@ -898,7 +898,7 @@ const Settings = () => {
                           }
                         }}
                       >
-                        {isAccountLoading ? (
+                        {isAccountLoading ? ( // Use specific account loading state
                           <>
                             <FaSpinner className="spinner me-2" size={12} />
                             Updating Account...
@@ -1173,7 +1173,7 @@ const Settings = () => {
                       <button
                         type="submit"
                         className="btn w-100 d-flex align-items-center justify-content-center py-2 position-relative overflow-hidden"
-                        disabled={isPasswordLoading}
+                        disabled={isPasswordLoading} // Use specific password loading state
                         style={{
                           background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
                           color: "white",
@@ -1199,7 +1199,7 @@ const Settings = () => {
                           }
                         }}
                       >
-                        {isPasswordLoading ? (
+                        {isPasswordLoading ? ( // Use specific password loading state
                           <>
                             <FaSpinner className="spinner me-2" size={12} />
                             Changing Password...

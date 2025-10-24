@@ -1,3 +1,4 @@
+// layout/Layout.jsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import TopBar from './TopBar';
 import Sidebar from './Sidebar';
@@ -6,6 +7,7 @@ import Footer from './Footer';
 const Layout = ({ children }) => {
   const [sidebarToggled, setSidebarToggled] = useState(false);
 
+  // SAFE toggle function - only uses React state and CSS classes
   const toggleSidebar = () => {
     setSidebarToggled(!sidebarToggled);
   };
@@ -47,24 +49,37 @@ const Layout = ({ children }) => {
     };
   }, [sidebarToggled]);
 
+  // Apply CSS class to body for sidebar state - FIXED APPROACH
+  useEffect(() => {
+    const body = document.body;
+    
+    if (sidebarToggled) {
+      body.classList.add('sb-sidenav-toggled');
+    } else {
+      body.classList.remove('sb-sidenav-toggled');
+    }
+
+    // Cleanup on component unmount
+    return () => {
+      body.classList.remove('sb-sidenav-toggled');
+    };
+  }, [sidebarToggled]);
+
   return (
-    <div className={`sb-nav-fixed ${sidebarToggled ? 'sb-sidenav-toggled' : ''}`}>
+    <div className="sb-nav-fixed">
       <TopBar onToggleSidebar={toggleSidebar} />
       
       <div id="layoutSidenav">
         <div id="layoutSidenav_nav">
-          <Sidebar /> 
+          <Sidebar onCloseSidebar={closeSidebar} /> 
         </div>
         
         <div id="layoutSidenav_content">
           {/* Clickable overlay - only visible on mobile when sidebar is open */}
-          {sidebarToggled && (
+          {sidebarToggled && window.innerWidth < 768 && (
             <div 
               className="mobile-sidebar-overlay"
               onClick={handleOverlayClick}
-              style={{
-                display: window.innerWidth < 768 ? 'block' : 'none'
-              }}
             />
           )}
           
