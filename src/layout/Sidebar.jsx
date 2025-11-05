@@ -1,11 +1,18 @@
-// Sidebar.jsx - FIXED with Rejected User Support
+// Sidebar.jsx - FINALIZED STRUCTURE
 import React from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLocation, Link } from "react-router-dom";
 
 const Sidebar = ({ onCloseSidebar }) => {
-  const { user, isAdmin, isBarangay, isApproved, isPending, pendingApprovals } =
-    useAuth();
+  const {
+    user,
+    isAdmin,
+    isBarangay,
+    isApproved,
+    isPending,
+    pendingApprovals,
+    unreadNotifications,
+  } = useAuth();
   const location = useLocation();
 
   // Helper function to check if a link is active
@@ -25,10 +32,10 @@ const Sidebar = ({ onCloseSidebar }) => {
     closeSidebarOnMobile();
   };
 
-  // Admin Sidebar Items
+  // Admin Sidebar Items - FINALIZED
   const adminMenuItems = [
     {
-      heading: "Core",
+      heading: "Dashboard",
       items: [
         {
           icon: "fas fa-tachometer-alt",
@@ -38,22 +45,17 @@ const Sidebar = ({ onCloseSidebar }) => {
       ],
     },
     {
-      heading: "Municipality Management",
+      heading: "Incident Management",
       items: [
         {
-          icon: "fas fa-map-marker-alt",
-          label: "Municipality Overview",
-          href: "/admin/municipality",
-        },
-        {
-          icon: "fas fa-users",
-          label: "Barangay Management",
-          href: "/admin/barangays",
+          icon: "fas fa-exclamation-triangle",
+          label: "All Incidents",
+          href: "/incidents",
         },
         {
           icon: "fas fa-chart-bar",
-          label: "Municipal Analytics",
-          href: "/admin/analytics",
+          label: "Incident Analytics",
+          href: "/incident-analytics",
         },
       ],
     },
@@ -63,119 +65,71 @@ const Sidebar = ({ onCloseSidebar }) => {
         {
           icon: "fas fa-user-check",
           label: "Approval Queue",
-          href: "/admin/approvals",
+          href: "/approvals",
           badge: pendingApprovals,
         },
-        { 
-          icon: "fas fa-users-cog", 
-          label: "All Users", 
-          href: "/admin/users" 
+        {
+          icon: "fas fa-users-cog",
+          label: "User Management",
+          href: "/users",
         },
       ],
     },
     {
-      heading: "Reports",
+      heading: "Population & Reports",
       items: [
+        {
+          icon: "fas fa-users",
+          label: "Population Data",
+          href: "/population",
+        },
         {
           icon: "fas fa-file-alt",
           label: "Municipal Reports",
-          href: "/admin/reports",
+          href: "/reports",
         },
+      ],
+    },
+    {
+      heading: "Notifications",
+      items: [
         {
-          icon: "fas fa-download",
-          label: "Export Data",
-          href: "/admin/export",
+          icon: "fas fa-bell",
+          label: "Notifications",
+          href: "/notifications",
+          badge: unreadNotifications,
         },
       ],
     },
   ];
 
-  // Barangay Sidebar Items - Full access for approved barangay users
+  // Barangay Sidebar Items - MODIFIED: No headings, just tabs
   const barangayMenuItems = [
     {
-      heading: "Core",
-      items: [
-        {
-          icon: "fas fa-tachometer-alt",
-          label: "Dashboard",
-          href: "/dashboard",
-        },
-      ],
+      icon: "fas fa-tachometer-alt",
+      label: "Dashboard",
+      href: "/dashboard",
     },
     {
-      heading: "Population Management",
-      items: [
-        {
-          icon: "fas fa-users",
-          label: "Population Data",
-          href: "/barangay/population",
-        },
-        {
-          icon: "fas fa-user-plus",
-          label: "Add Resident",
-          href: "/barangay/residents/add",
-        },
-        {
-          icon: "fas fa-list",
-          label: "Resident List",
-          href: "/barangay/residents",
-        },
-      ],
+      icon: "fas fa-exclamation-triangle",
+      label: "My Incidents",
+      href: "/incidents",
     },
     {
-      heading: "Incident Monitoring",
-      items: [
-        {
-          icon: "fas fa-map-marker-alt",
-          label: "Incident Map",
-          href: "/barangay/incident-map",
-        },
-        {
-          icon: "fas fa-exclamation-triangle",
-          label: "Report Incident",
-          href: "/barangay/incidents/report",
-        },
-        {
-          icon: "fas fa-list",
-          label: "Incident Reports",
-          href: "/barangay/incidents",
-        },
-      ],
+      icon: "fas fa-house-damage",
+      label: "Affected Population",
+      href: "/affected-population",
     },
     {
-      heading: "Disaster Management",
-      items: [
-        {
-          icon: "fas fa-house-damage",
-          label: "Affected Population",
-          href: "/barangay/affected",
-        },
-        {
-          icon: "fas fa-hands-helping",
-          label: "Assistance Tracking",
-          href: "/barangay/assistance",
-        },
-        {
-          icon: "fas fa-chart-bar",
-          label: "Barangay Analytics",
-          href: "/barangay/analytics",
-        },
-      ],
+      icon: "fas fa-bell",
+      label: "Notifications",
+      href: "/notifications",
+      badge: unreadNotifications,
     },
     {
-      heading: "Reports",
-      items: [
-        {
-          icon: "fas fa-file-alt",
-          label: "Generate Reports",
-          href: "/barangay/reports",
-        },
-        { 
-          icon: "fas fa-print", 
-          label: "Print Forms", 
-          href: "/barangay/print" 
-        },
-      ],
+      icon: "fas fa-file-export",
+      label: "Generate Reports",
+      href: "/reports",
     },
   ];
 
@@ -193,7 +147,7 @@ const Sidebar = ({ onCloseSidebar }) => {
     },
   ];
 
-  // Rejected User Sidebar Items - Limited access (NEW)
+  // Rejected User Sidebar Items - Limited access
   const rejectedUserMenuItems = [
     {
       heading: "Account",
@@ -209,16 +163,18 @@ const Sidebar = ({ onCloseSidebar }) => {
 
   // Choose menu based on role and approval status
   let menuItems = [];
+  let isBarangayMenu = false;
 
   if (isAdmin) {
     menuItems = adminMenuItems;
   } else if (isBarangay) {
     if (isApproved) {
-      menuItems = barangayMenuItems; // Full access for approved barangay users
+      menuItems = barangayMenuItems;
+      isBarangayMenu = true;
     } else if (isPending) {
-      menuItems = pendingApprovalMenuItems; // Limited access for pending users
-    } else if (user?.status === "rejected") { // NEW: Handle rejected users
-      menuItems = rejectedUserMenuItems; // Limited access for rejected users
+      menuItems = pendingApprovalMenuItems;
+    } else if (user?.status === "rejected") {
+      menuItems = rejectedUserMenuItems;
     }
   }
 
@@ -252,16 +208,47 @@ const Sidebar = ({ onCloseSidebar }) => {
     </React.Fragment>
   );
 
+  const renderBarangayMenuItem = (item, index) => {
+    const isActive = isActiveLink(item.href);
+    return (
+      <Link
+        key={index}
+        className={`nav-link ${isActive ? "active" : ""}`}
+        to={item.href}
+        onClick={handleLinkClick}
+      >
+        <div className="sb-nav-link-icon">
+          <i className={item.icon}></i>
+        </div>
+        {item.label}
+        {item.badge && item.badge > 0 && (
+          <span className="badge bg-danger ms-2">{item.badge}</span>
+        )}
+        {isActive && (
+          <span className="position-absolute top-50 end-0 translate-middle-y me-3">
+            <i className="fas fa-chevron-right small"></i>
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <nav className="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
       <div className="sb-sidenav-menu">
         <div className="nav">
-          {menuItems.map(renderMenuSection)}
+          {/* Render menu based on type */}
+          {isBarangayMenu ? (
+            // Render barangay menu as flat list without headings
+            barangayMenuItems.map(renderBarangayMenuItem)
+          ) : (
+            // Render other menus with section structure
+            menuItems.map(renderMenuSection)
+          )}
 
           {/* Common Settings for All Roles - ALWAYS VISIBLE */}
           <div className="sb-sidenav-menu-heading">Settings</div>
-          
-          {/* Profile Link - Accessible to ALL authenticated users */}
+
           <Link
             className={`nav-link ${isActiveLink("/profile") ? "active" : ""}`}
             to="/profile"
@@ -277,8 +264,7 @@ const Sidebar = ({ onCloseSidebar }) => {
               </span>
             )}
           </Link>
-          
-          {/* Settings Link - Accessible to ALL authenticated users */}
+
           <Link
             className={`nav-link ${isActiveLink("/settings") ? "active" : ""}`}
             to="/settings"
@@ -305,7 +291,7 @@ const Sidebar = ({ onCloseSidebar }) => {
             ? "Municipal Admin"
             : isPending
             ? "Pending Approval"
-            : user?.status === "rejected" // NEW: Show rejected status
+            : user?.status === "rejected"
             ? "Account Rejected"
             : user?.barangay_name}
         </div>

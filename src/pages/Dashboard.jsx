@@ -1,10 +1,10 @@
 // Dashboard.jsx - UPDATED
 import { useAuth } from "../contexts/AuthContext";
 import Layout from "../layout/Layout";
-import AdminDashboard from "./AdminDashboard";
-import BarangayDashboard from "./BarangayDashboard";
-import PendingApproval from "./PendingApproval";
-import RejectedUser from "./barangay/RejectedUser";
+import AdminDashboard from "./admin/AdminDashboard";
+import BarangayDashboard from "./barangay/dashboards/BarangayDashboard";
+import PendingApproval from "./barangay/dashboards/PendingApproval";
+import RejectedUser from "./barangay/dashboards/RejectedUser";
 
 const Dashboard = () => {
   const { user, isAdmin, isBarangay, isApproved, isPending } = useAuth();
@@ -15,14 +15,14 @@ const Dashboard = () => {
   }
 
   if (isBarangay) {
-    if (user?.status === 'rejected') {
+    if (user?.status === "rejected") {
       return <RejectedUser />;
     }
-    
+
     if (isPending) {
       return <PendingApproval />;
     }
-    
+
     if (isApproved) {
       return <BarangayDashboard />;
     }

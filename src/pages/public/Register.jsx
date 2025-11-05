@@ -14,13 +14,12 @@ import {
   FaCheck,
   FaExclamationTriangle,
 } from "react-icons/fa";
-import { showAlert, showToast } from "../services/notificationService";
-import Logo from "../assets/images/logo.png";
-import TextLogo from "../assets/images/text-logo-no-bg.png";
-import RegisterBackground from "../assets/images/register-pic.jpg";
-import DefaultAvatar from "../assets/images/default-avatar.jpg";
+import { showAlert, showToast } from "../../services/notificationService";
+import Logo from "../../assets/images/logo.png";
+import RegisterBackground from "../../assets/images/register-pic.jpg";
+import DefaultAvatar from "../../assets/images/default-avatar.jpg";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext"; // Import the auth context
+import { useAuth } from "../../contexts/AuthContext";
 
 export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
@@ -44,7 +43,7 @@ export default function Register() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [checkingDuplicates, setCheckingDuplicates] = useState({});
   const navigate = useNavigate();
-  const { login } = useAuth(); // Get the login function from auth context
+  const { login } = useAuth();
 
   useEffect(() => {
     const img = new Image();
@@ -55,16 +54,6 @@ export default function Register() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  // In Register.jsx, replace the theme object:
-  const theme = {
-    primary: "#2d5a27", // Your primary color
-    textPrimary: "#1a2a1a", // Your text primary
-    textSecondary: "#4a5c4a", // Your text secondary
-    inputBg: "#f8faf8", // Your input background
-    inputText: "#1a2a1a", // Your input text
-    inputBorder: "#c8d0c8", // Your input border
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -294,7 +283,6 @@ export default function Register() {
         localStorage.setItem("access_token", data.access_token);
 
         // Update auth context by manually logging in the user
-        // This ensures the auth state is updated throughout the app
         const loginResult = await login(form.email, form.password);
 
         if (loginResult.success) {
@@ -375,23 +363,20 @@ export default function Register() {
     }
   };
 
-  // Format contact number for display (XXX-XXX-XXXX)
-  const formatContact = (value) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 3) return numbers;
-    if (numbers.length <= 6)
-      return `${numbers.slice(0, 3)}-${numbers.slice(3)}`;
-    return `${numbers.slice(0, 3)}-${numbers.slice(3, 6)}-${numbers.slice(
-      6,
-      11
-    )}`;
-  };
+// Format contact number for display (XXXX-XXX-XXXX) - Philippine format
+const formatContact = (value) => {
+  const numbers = value.replace(/\D/g, "");
+  if (numbers.length <= 4) return numbers;
+  if (numbers.length <= 7)
+    return `${numbers.slice(0, 4)}-${numbers.slice(4)}`;
+  return `${numbers.slice(0, 4)}-${numbers.slice(4, 7)}-${numbers.slice(7, 11)}`;
+};
 
   return (
     <div className="min-vh-100 d-flex flex-column flex-lg-row position-relative">
       {/* Left Panel - Fixed on large screens */}
       <div className="col-lg-6 d-none d-lg-flex flex-column justify-content-center align-items-center text-white p-5 position-fixed start-0 top-0 h-100">
-        {/* Background Image with Blur Effect - SEPARATE DIV */}
+        {/* Background Image with Blur Effect */}
         <div
           className="position-absolute top-0 start-0 w-100 h-100"
           style={{
@@ -403,7 +388,7 @@ export default function Register() {
           }}
         />
 
-        {/* Gradient Overlay - SEPARATE DIV */}
+        {/* Gradient Overlay */}
         <div
           className="position-absolute top-0 start-0 w-100 h-100"
           style={{
@@ -414,7 +399,7 @@ export default function Register() {
 
         {/* Content - ALWAYS CLEAR */}
         <div className="position-relative z-2 d-flex flex-column align-items-center justify-content-center w-100 h-100 px-4">
-          {/* Logo Section - Same as Login.jsx */}
+          {/* Logo Section */}
           <div className="text-center mb-4">
             <div
               className="d-flex align-items-center justify-content-center mx-auto"
@@ -423,7 +408,7 @@ export default function Register() {
                 gap: "0.3rem",
               }}
             >
-              {/* Left: Logo Image */}
+              {/* Logo Image */}
               <div
                 className="d-flex align-items-center justify-content-center"
                 style={{
@@ -440,29 +425,10 @@ export default function Register() {
                   }}
                 />
               </div>
-
-              {/* Right: Text Logo + Description */}
-              <div
-                className="d-flex flex-column justify-content-center align-items-start"
-                style={{
-                  width: "150px",
-                }}
-              >
-                <img
-                  src={TextLogo}
-                  alt="System Text Logo"
-                  style={{
-                    width: "100%",
-                    height: "auto",
-                    objectFit: "contain",
-                    marginBottom: "0.2rem",
-                  }}
-                />
-              </div>
             </div>
           </div>
 
-          {/* Title - Same styling as Login */}
+          {/* Title */}
           <h4
             className="fw-bold text-center mb-3"
             style={{
@@ -491,17 +457,49 @@ export default function Register() {
 
       {/* Right Panel - Scrollable with Floating Animations */}
       <div className="col-12 col-lg-6 ms-lg-auto position-relative">
-        {/* Floating Elements - Only in right panel */}
-        <div className="floating-elements">
-          <div className="floating-icon floating-1">🏠</div>
-          <div className="floating-icon floating-2">📊</div>
-          <div className="floating-icon floating-3">🚨</div>
-          <div className="floating-icon floating-4">👥</div>
-          <div className="floating-icon floating-5">🌐</div>
-          <div className="floating-icon floating-6">🛡️</div>
-          <div className="floating-icon floating-7">📱</div>
-          <div className="floating-icon floating-8">🔒</div>
-        </div>
+        {/* Incident Monitoring Theme Background */}
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            backgroundColor: "#f8f9fa",
+            background: "linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%)",
+          }}
+        ></div>
+
+{/* Professional Government Monitoring Theme - Enhanced Visibility */}
+<div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden monitoring-elements">
+  {/* Geometric Monitoring Shapes */}
+  <div className="monitoring-shape shape-polygon-1"></div>
+  <div className="monitoring-shape shape-polygon-2"></div>
+  <div className="monitoring-shape shape-polygon-3"></div>
+  
+  {/* Network Connection Lines */}
+  <div className="network-line line-1"></div>
+  <div className="network-line line-2"></div>
+  <div className="network-line line-3"></div>
+  
+  {/* Data Flow Dots */}
+  <div className="data-dot dot-1"></div>
+  <div className="data-dot dot-2"></div>
+  <div className="data-dot dot-3"></div>
+  <div className="data-dot dot-4"></div>
+  
+  {/* Monitoring Grid */}
+  <div className="monitoring-grid"></div>
+</div>
+
+                {/* Subtle grid pattern overlay */}
+        <div
+          className="position-absolute top-0 start-0 w-100 h-100"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(51, 107, 49, 0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(51, 107, 49, 0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: '50px 50px',
+            pointerEvents: 'none'
+          }}
+        ></div>
 
         <div className="min-vh-100 d-flex align-items-center justify-content-center p-3 p-lg-4">
           <div
@@ -510,31 +508,60 @@ export default function Register() {
             }`}
             style={{
               maxWidth: "480px",
-              border: "1px solid var(--border-color)",
+              border: `1px solid var(--border-color)`,
               position: "relative",
               zIndex: 2,
-              backdropFilter: "blur(10px)",
-              backgroundColor: "rgba(255, 255, 255, 0.95)",
             }}
           >
-            <h3
-              className="fw-bold text-center mb-2"
-              style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
-            >
-              Barangay Account Registration
-            </h3>
-            <p
-              className="text-center mb-4"
-              style={{ color: theme.textSecondary, fontSize: "14px" }}
-            >
-              Please fill out the form below to register your barangay.
-            </p>
+            {/* Mobile Logo - Only show on small screens */}
+            <div className="d-lg-none text-center mb-4">
+              <div className="d-flex align-items-center justify-content-center">
+                <div
+                  className="d-flex align-items-center justify-content-center"
+                  style={{
+                    filter: backgroundLoaded ? "blur(0px)" : "blur(8px)",
+                    opacity: backgroundLoaded ? 1 : 0,
+                    transition: "all 0.6s ease",
+                  }}
+                >
+                  <img
+                    src={Logo}
+                    alt="Barangay Logo"
+                    style={{
+                      width: "90px",
+                      height: "90px",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Header */}
+            <div className="text-start mb-4">
+              <h1
+                className="fw-bolder mb-2"
+                style={{ color: "var(--primary-color)", fontSize: "1.5rem" }}
+              >
+                Create Your Account
+              </h1>
+              <p
+                className="fw-semibold mb-0"
+                style={{
+                  lineHeight: "1.4",
+                  fontSize: "0.9rem",
+                  color: "var(--primary-color)",
+                }}
+              >
+                Register your barangay to access the incident monitoring system.
+                Your account will be activated after verification.
+              </p>
+            </div>
 
             {/* Approval Notice */}
             <div className="alert alert-info text-center small mb-4">
-              <strong>Note:</strong> Your account will require admin approval.
-              You can login immediately but will have limited access until
-              approved.
+              <strong>Note:</strong> Your account requires verification. You'll
+              receive an email once activated.
             </div>
 
             {/* Avatar Upload Section */}
@@ -546,7 +573,7 @@ export default function Register() {
                     width: "100px",
                     height: "100px",
                     cursor: "pointer",
-                    border: `3px solid ${theme.primary} !important`,
+                    border: `3px solid var(--primary-color) !important`,
                   }}
                   onClick={handleAvatarClick}
                 >
@@ -608,6 +635,13 @@ export default function Register() {
             <form onSubmit={handleSubmit}>
               {/* Full Name */}
               <div className="mb-3 position-relative">
+                <label
+                  htmlFor="name"
+                  className="form-label fw-semibold mb-2"
+                  style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+                >
+                  Full Name *
+                </label>
                 <div className="input-group">
                   <span className="input-group-text bg-transparent border-end-0">
                     <FaUser className="text-muted" size={16} />
@@ -615,7 +649,7 @@ export default function Register() {
                   <input
                     type="text"
                     name="name"
-                    placeholder="Full Name"
+                    placeholder="Enter your full name"
                     value={form.name}
                     onChange={handleInputChange}
                     className={`form-control border-start-0 ps-2 fw-semibold ${
@@ -624,14 +658,15 @@ export default function Register() {
                       getFieldStatus("name") === "success" ? "is-valid" : ""
                     }`}
                     style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       borderColor: fieldErrors.name
                         ? "#dc3545"
-                        : theme.inputBorder,
+                        : "var(--input-border)",
                     }}
                     required
                     disabled={isSubmitting}
+                    id="name"
                   />
                   <span className="input-group-text bg-transparent border-start-0">
                     {renderFieldIcon("name")}
@@ -646,6 +681,13 @@ export default function Register() {
 
               {/* Barangay Name */}
               <div className="mb-3 position-relative">
+                <label
+                  htmlFor="barangayName"
+                  className="form-label fw-semibold mb-2"
+                  style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+                >
+                  Barangay Name *
+                </label>
                 <div className="input-group">
                   <span className="input-group-text bg-transparent border-end-0">
                     <FaBuilding className="text-muted" size={16} />
@@ -653,7 +695,7 @@ export default function Register() {
                   <input
                     type="text"
                     name="barangayName"
-                    placeholder="Barangay Name"
+                    placeholder="Enter your barangay name"
                     value={form.barangayName}
                     onChange={handleInputChange}
                     className={`form-control border-start-0 ps-2 fw-semibold ${
@@ -664,14 +706,15 @@ export default function Register() {
                         : ""
                     }`}
                     style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       borderColor: fieldErrors.barangayName
                         ? "#dc3545"
-                        : theme.inputBorder,
+                        : "var(--input-border)",
                     }}
                     required
                     disabled={isSubmitting}
+                    id="barangayName"
                   />
                   <span className="input-group-text bg-transparent border-start-0">
                     {renderFieldIcon("barangayName")}
@@ -686,6 +729,13 @@ export default function Register() {
 
               {/* Position */}
               <div className="mb-3 position-relative">
+                <label
+                  htmlFor="position"
+                  className="form-label fw-semibold mb-2"
+                  style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+                >
+                  Position / Role *
+                </label>
                 <div className="input-group">
                   <span className="input-group-text bg-transparent border-end-0">
                     <FaUser className="text-muted" size={16} />
@@ -693,21 +743,22 @@ export default function Register() {
                   <input
                     type="text"
                     name="position"
-                    placeholder="Position / Role"
+                    placeholder="Enter your position/role"
                     value={form.position}
                     onChange={handleInputChange}
                     className={`form-control border-start-0 ps-2 fw-semibold ${
                       fieldErrors.position ? "is-invalid" : ""
                     }`}
                     style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       borderColor: fieldErrors.position
                         ? "#dc3545"
-                        : theme.inputBorder,
+                        : "var(--input-border)",
                     }}
                     required
                     disabled={isSubmitting}
+                    id="position"
                   />
                 </div>
                 {fieldErrors.position && (
@@ -719,6 +770,13 @@ export default function Register() {
 
               {/* Email */}
               <div className="mb-3 position-relative">
+                <label
+                  htmlFor="email"
+                  className="form-label fw-semibold mb-2"
+                  style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+                >
+                  Email Address *
+                </label>
                 <div className="input-group">
                   <span className="input-group-text bg-transparent border-end-0">
                     <FaEnvelope className="text-muted" size={16} />
@@ -726,7 +784,7 @@ export default function Register() {
                   <input
                     type="email"
                     name="email"
-                    placeholder="Email Address"
+                    placeholder="Enter your email address"
                     value={form.email}
                     onChange={handleInputChange}
                     className={`form-control border-start-0 ps-2 fw-semibold ${
@@ -735,14 +793,15 @@ export default function Register() {
                       getFieldStatus("email") === "success" ? "is-valid" : ""
                     }`}
                     style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       borderColor: fieldErrors.email
                         ? "#dc3545"
-                        : theme.inputBorder,
+                        : "var(--input-border)",
                     }}
                     required
                     disabled={isSubmitting}
+                    id="email"
                   />
                   <span className="input-group-text bg-transparent border-start-0">
                     {renderFieldIcon("email")}
@@ -757,6 +816,13 @@ export default function Register() {
 
               {/* Password */}
               <div className="mb-3 position-relative">
+                <label
+                  htmlFor="password"
+                  className="form-label fw-semibold mb-2"
+                  style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+                >
+                  Password *
+                </label>
                 <div className="input-group">
                   <span className="input-group-text bg-transparent border-end-0">
                     <FaLock className="text-muted" size={16} />
@@ -764,22 +830,23 @@ export default function Register() {
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
-                    placeholder="Password"
+                    placeholder="Enter your password"
                     value={form.password}
                     onChange={handleInputChange}
                     className={`form-control border-start-0 ps-2 fw-semibold ${
                       fieldErrors.password ? "is-invalid" : ""
                     }`}
                     style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       borderColor: fieldErrors.password
                         ? "#dc3545"
-                        : theme.inputBorder,
+                        : "var(--input-border)",
                     }}
                     required
                     minLength={8}
                     disabled={isSubmitting}
+                    id="password"
                   />
                   <span className="input-group-text bg-transparent border-start-0">
                     <button
@@ -803,10 +870,20 @@ export default function Register() {
                     {fieldErrors.password}
                   </div>
                 )}
+                <div className="form-text small mt-1">
+                  Password must be at least 8 characters long
+                </div>
               </div>
 
               {/* Confirm Password */}
               <div className="mb-3 position-relative">
+                <label
+                  htmlFor="confirmPassword"
+                  className="form-label fw-semibold mb-2"
+                  style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+                >
+                  Confirm Password *
+                </label>
                 <div className="input-group">
                   <span className="input-group-text bg-transparent border-end-0">
                     <FaLock className="text-muted" size={16} />
@@ -814,22 +891,23 @@ export default function Register() {
                   <input
                     type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
-                    placeholder="Confirm Password"
+                    placeholder="Confirm your password"
                     value={form.confirmPassword}
                     onChange={handleInputChange}
                     className={`form-control border-start-0 ps-2 fw-semibold ${
                       fieldErrors.confirmPassword ? "is-invalid" : ""
                     }`}
                     style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       borderColor: fieldErrors.confirmPassword
                         ? "#dc3545"
-                        : theme.inputBorder,
+                        : "var(--input-border)",
                     }}
                     required
                     minLength={8}
                     disabled={isSubmitting}
+                    id="confirmPassword"
                   />
                   <span className="input-group-text bg-transparent border-start-0">
                     <button
@@ -856,50 +934,65 @@ export default function Register() {
                 )}
               </div>
 
-              {/* Contact */}
-              <div className="mb-3 position-relative">
-                <div className="input-group">
-                  <span className="input-group-text bg-transparent border-end-0">
-                    <FaPhone className="text-muted" size={16} />
-                  </span>
-                  <input
-                    type="text"
-                    name="contact"
-                    placeholder="Contact Number (11 digits)"
-                    value={formatContact(form.contact)}
-                    onChange={handleInputChange}
-                    className={`form-control border-start-0 ps-2 fw-semibold ${
-                      fieldErrors.contact ? "is-invalid" : ""
-                    } ${
-                      getFieldStatus("contact") === "success" ? "is-valid" : ""
-                    }`}
-                    style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
-                      borderColor: fieldErrors.contact
-                        ? "#dc3545"
-                        : theme.inputBorder,
-                    }}
-                    required
-                    maxLength={13} // 11 digits + 2 dashes
-                    disabled={isSubmitting}
-                  />
-                  <span className="input-group-text bg-transparent border-start-0">
-                    {renderFieldIcon("contact")}
-                  </span>
-                </div>
-                {fieldErrors.contact && (
-                  <div className="invalid-feedback d-block small mt-1">
-                    {fieldErrors.contact}
-                  </div>
-                )}
-                <div className="form-text small mt-1">
-                  Format: 09XX-XXX-XXXX (11 digits total)
-                </div>
-              </div>
+{/* Contact */}
+<div className="mb-3 position-relative">
+  <label
+    htmlFor="contact"
+    className="form-label fw-semibold mb-2"
+    style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+  >
+    Contact Number *
+  </label>
+  <div className="input-group">
+    <span className="input-group-text bg-transparent border-end-0">
+      <FaPhone className="text-muted" size={16} />
+    </span>
+    <input
+      type="text"
+      name="contact"
+      placeholder="09XX-XXX-XXXX (11 digits)"
+      value={formatContact(form.contact)}
+      onChange={handleInputChange}
+      className={`form-control border-start-0 ps-2 fw-semibold ${
+        fieldErrors.contact ? "is-invalid" : ""
+      } ${
+        getFieldStatus("contact") === "success" ? "is-valid" : ""
+      }`}
+      style={{
+        backgroundColor: "var(--input-bg)",
+        color: "var(--input-text)",
+        borderColor: fieldErrors.contact
+          ? "#dc3545"
+          : "var(--input-border)",
+      }}
+      required
+      maxLength={13} // 11 digits + 2 dashes (XXXX-XXX-XXXX)
+      disabled={isSubmitting}
+      id="contact"
+    />
+    <span className="input-group-text bg-transparent border-start-0">
+      {renderFieldIcon("contact")}
+    </span>
+  </div>
+  {fieldErrors.contact && (
+    <div className="invalid-feedback d-block small mt-1">
+      {fieldErrors.contact}
+    </div>
+  )}
+  <div className="form-text small mt-1">
+    Format: 09XX-XXX-XXXX (11 digits)
+  </div>
+</div>
 
               {/* Municipality */}
               <div className="mb-4 position-relative">
+                <label
+                  htmlFor="municipality"
+                  className="form-label fw-semibold mb-2"
+                  style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}
+                >
+                  Municipality *
+                </label>
                 <div className="input-group">
                   <span className="input-group-text bg-transparent border-end-0">
                     <FaMapMarkerAlt className="text-muted" size={16} />
@@ -907,21 +1000,22 @@ export default function Register() {
                   <input
                     type="text"
                     name="municipality"
-                    placeholder="Municipality"
+                    placeholder="Enter your municipality"
                     value={form.municipality}
                     onChange={handleInputChange}
                     className={`form-control border-start-0 ps-2 fw-semibold ${
                       fieldErrors.municipality ? "is-invalid" : ""
                     }`}
                     style={{
-                      backgroundColor: theme.inputBg,
-                      color: theme.inputText,
+                      backgroundColor: "var(--input-bg)",
+                      color: "var(--input-text)",
                       borderColor: fieldErrors.municipality
                         ? "#dc3545"
-                        : theme.inputBorder,
+                        : "var(--input-border)",
                     }}
                     required
                     disabled={isSubmitting}
+                    id="municipality"
                   />
                 </div>
                 {fieldErrors.municipality && (
@@ -934,34 +1028,66 @@ export default function Register() {
               {/* Submit Button */}
               <button
                 type="submit"
-                className="btn-login w-100 py-2 fw-semibold shadow-sm d-flex align-items-center justify-content-center"
-                disabled={
-                  isSubmitting ||
-                  Object.keys(fieldErrors).some((key) => fieldErrors[key])
-                }
+                className="btn w-100 fw-semibold d-flex justify-content-center align-items-center position-relative"
+                disabled={isSubmitting}
+                style={{
+                  backgroundColor: "var(--primary-color)",
+                  color: "var(--btn-primary-text)",
+                  height: "43px",
+                  borderRadius: "8px",
+                  border: "none",
+                  fontSize: "1rem",
+                  transition: "all 0.3s ease-in-out",
+                  overflow: "hidden",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
+                }}
+                onMouseOver={(e) => {
+                  if (!isSubmitting) {
+                    e.target.style.backgroundColor = "var(--primary-dark)";
+                    e.target.style.transform = "translateY(-2px)";
+                    e.target.style.boxShadow = "0 6px 20px rgba(0, 0, 0, 0.4)";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isSubmitting) {
+                    e.target.style.backgroundColor = "var(--primary-color)";
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+                  }
+                }}
+                onMouseDown={(e) => {
+                  if (!isSubmitting) {
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.3)";
+                  }
+                }}
               >
                 {isSubmitting ? (
                   <>
                     <FaSpinner className="spinner me-2" />
-                    Registering...
+                    Creating Account...
                   </>
                 ) : (
-                  "Sign up"
+                  "Create Account"
                 )}
               </button>
 
               {/* Login Link */}
               <p
-                className="text-center mt-3 small fw-semibold"
-                style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
+                className="text-center mt-4 pt-3 mb-0 small fw-semibold border-top"
+                style={{
+                  color: "var(--primary-color)",
+                  paddingTop: "1rem",
+                  borderColor: "var(--border-color) !important",
+                }}
               >
                 Already have an account?{" "}
                 <Link
                   to="/"
-                  className="fw-bold"
-                  style={{ color: theme.primary }} // Changed from theme.textPrimary to theme.primary
+                  className="fw-bold text-decoration-underline"
+                  style={{ color: "var(--primary-color)" }}
                 >
-                  Log In
+                  Sign in here
                 </Link>
               </p>
             </form>
@@ -969,215 +1095,283 @@ export default function Register() {
         </div>
       </div>
 
+      {/* Custom Styles */}
       <style jsx>{`
-        /* Form Container Animation */
-        .form-container {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: all 0.6s ease-in-out;
-        }
+               /* Professional Government Monitoring Theme - Enhanced Visibility */
+.monitoring-elements {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
 
-        .form-container.fade-in {
-          opacity: 1;
-          transform: translateY(0);
-        }
+/* Enhanced Geometric Monitoring Shapes */
+.monitoring-shape {
+  position: absolute;
+  border: 3px solid; /* Increased border width */
+  border-radius: 6px;
+  animation: floatShape 20s ease-in-out infinite;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Added shadow for depth */
+}
 
-        /* Floating Elements - Only in right panel */
-        .floating-elements {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-          z-index: 1;
-        }
+.shape-polygon-1 {
+  top: 15%;
+  left: 8%;
+  width: 50px; /* Increased size */
+  height: 50px;
+  background: linear-gradient(135deg, rgba(51, 107, 49, 0.15) 0%, rgba(51, 107, 49, 0.05) 100%);
+  border-color: rgba(51, 107, 49, 0.3); /* Darker border */
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  animation-delay: 0s;
+}
 
-        .floating-icon {
-          position: absolute;
-          font-size: 1.5rem;
-          opacity: 0.12;
-          animation: float 8s ease-in-out infinite;
-          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-        }
+.shape-polygon-2 {
+  top: 70%;
+  right: 12%;
+  width: 40px; /* Increased size */
+  height: 40px;
+  background: linear-gradient(135deg, rgba(199, 74, 104, 0.12) 0%, rgba(199, 74, 104, 0.04) 100%);
+  border-color: rgba(199, 74, 104, 0.25); /* Darker border */
+  clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+  animation-delay: 5s;
+}
 
-        /* Desktop positions */
-        .floating-1 {
-          top: 15%;
-          left: 8%;
-          animation-delay: 0s;
-        }
-        .floating-2 {
-          top: 20%;
-          right: 10%;
-          animation-delay: 1s;
-        }
-        .floating-3 {
-          bottom: 30%;
-          left: 10%;
-          animation-delay: 2s;
-        }
-        .floating-4 {
-          bottom: 15%;
-          right: 8%;
-          animation-delay: 3s;
-        }
-        .floating-5 {
-          top: 40%;
-          left: 15%;
-          animation-delay: 1.5s;
-        }
-        .floating-6 {
-          top: 35%;
-          right: 15%;
-          animation-delay: 2.5s;
-        }
-        .floating-7 {
-          bottom: 45%;
-          right: 18%;
-          animation-delay: 0.5s;
-        }
-        .floating-8 {
-          top: 65%;
-          left: 12%;
-          animation-delay: 3.5s;
-        }
+.shape-polygon-3 {
+  bottom: 25%;
+  left: 15%;
+  width: 45px; /* Increased size */
+  height: 45px;
+  background: linear-gradient(135deg, rgba(45, 90, 39, 0.14) 0%, rgba(45, 90, 39, 0.04) 100%);
+  border-color: rgba(45, 90, 39, 0.28); /* Darker border */
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  animation-delay: 10s;
+}
 
-        /* Button styles */
-        .btn-login {
-          background: linear-gradient(135deg, #2d5a27, #3a6b32);
-          color: white;
-          border: none;
-          border-radius: 8px;
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-        }
+/* Enhanced Network Connection Lines */
+.network-line {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, rgba(51, 107, 49, 0.2), transparent);
+  height: 2px; /* Increased thickness */
+  animation: pulseLine 8s ease-in-out infinite;
+  box-shadow: 0 1px 3px rgba(51, 107, 49, 0.2); /* Added glow effect */
+}
 
-        .btn-login:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(45, 90, 39, 0.3);
-        }
+.line-1 {
+  top: 30%;
+  left: 5%;
+  width: 140px; /* Increased length */
+  transform: rotate(25deg);
+  animation-delay: 0s;
+}
 
-        .btn-login:active:not(:disabled) {
-          transform: translateY(0);
-        }
+.line-2 {
+  top: 60%;
+  right: 8%;
+  width: 120px; /* Increased length */
+  transform: rotate(-15deg);
+  animation-delay: 2s;
+}
 
-        .btn-login:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
+.line-3 {
+  bottom: 35%;
+  left: 20%;
+  width: 100px; /* Increased length */
+  transform: rotate(45deg);
+  animation-delay: 4s;
+}
 
-        .btn-login::before {
-          content: "";
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255, 255, 255, 0.2),
-            transparent
-          );
-          transition: left 0.5s;
-        }
+/* Enhanced Data Flow Dots */
+.data-dot {
+  position: absolute;
+  background: rgba(51, 107, 49, 0.2); /* Darker dots */
+  border-radius: 50%;
+  animation: flowDot 12s linear infinite;
+  box-shadow: 0 0 6px rgba(51, 107, 49, 0.3); /* Added glow */
+}
 
-        .btn-login:hover::before {
-          left: 100%;
-        }
+.dot-1 {
+  top: 25%;
+  right: 20%;
+  width: 8px; /* Larger dots */
+  height: 8px;
+  animation-delay: 0s;
+}
 
-        /* Spinner Animation */
-        .spinner {
-          animation: spin 1s linear infinite;
-        }
+.dot-2 {
+  top: 45%;
+  left: 25%;
+  width: 6px; /* Larger dots */
+  height: 6px;
+  animation-delay: 3s;
+}
 
-        /* Input group custom styles */
-        .input-group-text {
-          border-color: var(--input-border) !important;
-          background-color: var(--input-bg) !important;
-        }
+.dot-3 {
+  bottom: 30%;
+  right: 30%;
+  width: 7px; /* Larger dots */
+  height: 7px;
+  animation-delay: 6s;
+}
 
-        .input-group .form-control:focus {
-          box-shadow: none;
-          border-color: var(--input-border);
-        }
+.dot-4 {
+  bottom: 45%;
+  left: 10%;
+  width: 5px; /* Larger dots */
+  height: 5px;
+  animation-delay: 9s;
+}
 
-        .input-group .form-control.is-invalid {
-          border-color: #dc3545;
-        }
+/* Enhanced Monitoring Grid */
+.monitoring-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(51, 107, 49, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(51, 107, 49, 0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: gridPulse 20s ease-in-out infinite;
+}
 
-        .input-group .form-control.is-valid {
-          border-color: #198754;
-        }
+/* Enhanced Animations */
+@keyframes floatShape {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.5; /* Increased base opacity */
+  }
+  25% {
+    transform: translateY(-15px) rotate(5deg);
+    opacity: 0.8; /* Increased peak opacity */
+  }
+  50% {
+    transform: translateY(-10px) rotate(-3deg);
+    opacity: 0.7;
+  }
+  75% {
+    transform: translateY(-20px) rotate(2deg);
+    opacity: 0.9; /* Increased peak opacity */
+  }
+}
 
-        /* Animations */
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0px) rotate(0deg) scale(1);
-          }
-          33% {
-            transform: translateY(-12px) rotate(4deg) scale(1.05);
-          }
-          66% {
-            transform: translateY(8px) rotate(-2deg) scale(0.98);
-          }
-        }
+@keyframes pulseLine {
+  0%, 100% {
+    opacity: 0.2; /* Increased base opacity */
+    transform: scaleX(0.8);
+  }
+  50% {
+    opacity: 0.5; /* Increased peak opacity */
+    transform: scaleX(1);
+  }
+}
 
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
+@keyframes flowDot {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.3; /* Higher starting opacity */
+  }
+  10% {
+    opacity: 0.8; /* Higher peak opacity */
+  }
+  50% {
+    transform: translateY(-40px) translateX(20px);
+    opacity: 1; /* Maximum opacity */
+  }
+  90% {
+    opacity: 0.5; /* Higher ending opacity */
+  }
+  100% {
+    transform: translateY(-80px) translateX(40px);
+    opacity: 0.2; /* Higher ending opacity */
+  }
+}
 
-        /* Mobile Responsive */
-        @media (max-width: 991px) {
-          .floating-elements {
-            display: none;
-          }
+@keyframes gridPulse {
+  0%, 100% {
+    opacity: 0.4; /* Increased base opacity */
+  }
+  50% {
+    opacity: 0.8; /* Increased peak opacity */
+  }
+}
 
-          .form-container {
-            opacity: 1 !important;
-            transform: translateY(0) !important;
-          }
-        }
+/* Mobile Responsive */
+@media (max-width: 991px) {
+  .monitoring-elements {
+    display: none;
+  }
+}
 
-        @media (min-width: 992px) {
-          .floating-icon {
-            font-size: 1.8rem;
-            opacity: 0.1;
-          }
-        }
+/* Form Container Animation */
+.form-container {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.6s ease-in-out;
+}
 
-        @media (max-width: 768px) {
-          .bg-white {
-            backdrop-filter: none;
-            background-color: white !important;
-          }
+.form-container.fade-in {
+  opacity: 1;
+  transform: translateY(0);
+}
 
-          .form-control {
-            font-size: 16px;
-          }
+.spinner {
+  animation: spin 1s linear infinite;
+}
 
-          .input-group-text {
-            padding: 0.5rem 0.75rem;
-          }
-        }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
-        @media (max-width: 576px) {
-          .form-container {
-            padding: 1.5rem !important;
-          }
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(45, 90, 39, 0.25);
+}
 
-          .input-group-text {
-            padding: 0.375rem 0.75rem;
-          }
-        }
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none !important;
+  boxShadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Input field hover effects */
+.form-control:hover:not(:focus):not(:disabled) {
+  border-color: rgba(45, 90, 39, 0.5);
+}
+
+/* Link hover effects */
+a.text-decoration-underline:hover {
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+/* Error state styling */
+.is-invalid {
+  border-color: #dc3545 !important;
+}
+
+.invalid-feedback {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .form-control {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .form-container {
+    padding: 1.5rem !important;
+  }
+}
       `}</style>
     </div>
   );

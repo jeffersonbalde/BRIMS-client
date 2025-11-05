@@ -1,4 +1,4 @@
-// contexts/AuthContext.jsx - Updated with simpler approach
+// contexts/AuthContext.jsx - Updated with notifications
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export const AuthContext = createContext();
@@ -10,11 +10,37 @@ export const AuthProvider = ({ children }) => {
     () => localStorage.getItem("access_token") || null
   );
   const [pendingApprovals, setPendingApprovals] = useState(0);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const formatAvatarUrl = (avatarPath) => {
     if (!avatarPath) return null;
     const filename = avatarPath.split("/").pop();
     return `${import.meta.env.VITE_LARAVEL_API}/avatar/${filename}`;
+  };
+
+  // Function to fetch unread notifications count
+  const fetchUnreadNotificationsCount = async (authToken) => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_LARAVEL_API}/notifications/unread-count`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadNotifications(data.unread_count || 0);
+      } else {
+        setUnreadNotifications(0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch unread notifications count:", error);
+      setUnreadNotifications(0);
+    }
   };
 
   // Function to fetch pending approvals count using existing endpoint
@@ -32,7 +58,6 @@ export const AuthProvider = ({ children }) => {
 
       if (res.ok) {
         const data = await res.json();
-        // Count the users from the existing endpoint
         const count = data.users ? data.users.length : 0;
         setPendingApprovals(count);
       } else {
@@ -41,6 +66,16 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Failed to fetch pending approvals count:", error);
       setPendingApprovals(0);
+    }
+  };
+
+  // Function to refresh all counts
+  const refreshAllCounts = async () => {
+    if (token) {
+      await fetchUnreadNotificationsCount(token);
+      if (user?.role === "admin") {
+        await fetchPendingApprovalsCount(token);
+      }
     }
   };
 
@@ -72,7 +107,8 @@ export const AuthProvider = ({ children }) => {
           setUser(formattedUser);
           setToken(storedToken);
 
-          // Fetch pending approvals count if user is admin
+          // Fetch counts
+          await fetchUnreadNotificationsCount(storedToken);
           if (userData.user?.role === "admin") {
             await fetchPendingApprovalsCount(storedToken);
           }
@@ -92,6 +128,17 @@ export const AuthProvider = ({ children }) => {
 
     checkAuth();
   }, []);
+
+  // Set up interval to refresh counts every 30 seconds
+  useEffect(() => {
+    if (token) {
+      const interval = setInterval(() => {
+        refreshAllCounts();
+      }, 30000); // 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [token]);
 
   const login = async (email, password) => {
     try {
@@ -120,7 +167,8 @@ export const AuthProvider = ({ children }) => {
       setToken(data.access_token);
       setUser(formattedUser);
 
-      // Fetch pending approvals count if user is admin
+      // Fetch counts after login
+      await fetchUnreadNotificationsCount(data.access_token);
       if (data.user?.role === "admin") {
         await fetchPendingApprovalsCount(data.access_token);
       }
@@ -154,68 +202,63 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setToken(null);
       setPendingApprovals(0);
+      setUnreadNotifications(0);
     }
   };
 
-  // Function to refresh pending approvals count
-  const refreshPendingApprovals = async () => {
-    if (token && user?.role === "admin") {
-      await fetchPendingApprovalsCount(token);
+  const refreshUserData = async () => {
+    const storedToken = localStorage.getItem("access_token");
+    
+    if (!storedToken) {
+      return;
     }
-  };
 
-const refreshUserData = async () => {
-  const storedToken = localStorage.getItem("access_token");
-  
-  if (!storedToken) {
-    return;
-  }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_LARAVEL_API}/user`, {
+        headers: {
+          Authorization: `Bearer ${storedToken}`,
+          Accept: "application/json",
+        },
+      });
 
-  try {
-    const res = await fetch(`${import.meta.env.VITE_LARAVEL_API}/user`, {
-      headers: {
-        Authorization: `Bearer ${storedToken}`,
-        Accept: "application/json",
-      },
-    });
+      if (res.ok) {
+        const userData = await res.json();
+        const formattedUser = {
+          ...userData.user,
+          avatar: formatAvatarUrl(userData.user?.avatar),
+        };
 
-    if (res.ok) {
-      const userData = await res.json();
-      const formattedUser = {
-        ...userData.user,
-        avatar: formatAvatarUrl(userData.user?.avatar),
-      };
+        setUser(formattedUser);
 
-      setUser(formattedUser);
-
-      // Fetch pending approvals count if user is admin
-      if (userData.user?.role === 'admin') {
-        await fetchPendingApprovalsCount(storedToken);
+        // Refresh counts
+        await refreshAllCounts();
+        
+        return formattedUser;
       }
-      
-      return formattedUser; // Return the updated user data
+    } catch (error) {
+      console.error("User data refresh failed:", error);
+      throw error;
     }
-  } catch (error) {
-    console.error("User data refresh failed:", error);
-    throw error;
-  }
-};
-// Add refreshUserData to the context value
-const value = {
-  user,
-  login,
-  logout,
-  token,
-  loading,
-  pendingApprovals,
-  refreshPendingApprovals,
-  refreshUserData, // Add this line
-  isAuthenticated: !!user && !!token,
-  isAdmin: user?.role === "admin",
-  isBarangay: user?.role === "barangay",
-  isApproved: user?.status === "approved",
-  isPending: user?.status === "pending"
-};
+  };
+
+  const value = {
+    user,
+    login,
+    logout,
+    token,
+    loading,
+    pendingApprovals,
+    unreadNotifications,
+    refreshPendingApprovals: () => user?.role === "admin" && fetchPendingApprovalsCount(token),
+    refreshNotifications: () => fetchUnreadNotificationsCount(token),
+    refreshAllCounts,
+    refreshUserData,
+    isAuthenticated: !!user && !!token,
+    isAdmin: user?.role === "admin",
+    isBarangay: user?.role === "barangay",
+    isApproved: user?.status === "approved",
+    isPending: user?.status === "pending"
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

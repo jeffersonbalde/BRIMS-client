@@ -1,7 +1,7 @@
-// pages/Profile.jsx - UPDATED with Proper Contact Support Modal
+// pages/BarangayProfile.jsx - UPDATED with Old Project Styling Only
 import React from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { showAlert } from "../services/notificationService"; // ADDED IMPORT
+import { useAuth } from "../../../contexts/AuthContext";
+import { showAlert } from '../../../services/notificationService';
 import {
   FaUser,
   FaEnvelope,
@@ -18,10 +18,9 @@ import {
   FaArrowRight,
 } from "react-icons/fa";
 
-const Profile = () => {
+const BarangayProfile = () => {
   const { user } = useAuth();
 
-  // UPDATED: Use the same modal as Settings.jsx
   const handleContactSupport = () => {
     const phoneNumber = "+639123456789";
     const email = "admin@municipality.gov.ph";
@@ -107,7 +106,7 @@ const Profile = () => {
 
   return (
     <div className="container-fluid px-1 py-3">
-      {/* Header with Light Background - Matching PendingApproval */}
+      {/* Header with Old Project Styling */}
       <div className="text-center mb-4">
         <div className="d-flex justify-content-center align-items-center mb-3">
           <div
@@ -116,25 +115,22 @@ const Profile = () => {
               width: "50px",
               height: "50px",
               background: statusConfig.gradient,
-              boxShadow: `0 4px 15px ${statusConfig.color}30`,
+              boxShadow: `0 4px 15px ${statusConfig.color}40`,
               transition: "all 0.3s ease",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "scale(1.1)";
-              e.currentTarget.style.boxShadow = `0 6px 20px ${statusConfig.color}40`;
+              e.currentTarget.style.boxShadow = `0 6px 20px ${statusConfig.color}60`;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = `0 4px 15px ${statusConfig.color}30`;
+              e.currentTarget.style.boxShadow = `0 4px 15px ${statusConfig.color}40`;
             }}
           >
             <StatusIcon size={22} className="text-white" />
           </div>
           <div className="text-start">
-            <h1
-              className="h3 mb-1 fw-bold"
-              style={{ color: "var(--text-primary)" }}
-            >
+            <h1 className="h4 mb-1 fw-bold" style={{ color: "#2d5a27" }}>
               {getStatusDisplay(user?.status)}
             </h1>
             <p className="text-muted mb-0 small">
@@ -144,35 +140,32 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Compact Grid Layout with Enhanced Colors */}
+      {/* Grid Layout with Old Project Styling */}
       <div className="row g-3">
-        {/* Profile Overview Card - Enhanced */}
+        {/* Profile Overview Card - Old Project Style */}
         <div className="col-12 col-lg-8">
           <div
-            className="card border-0 shadow-sm h-100"
+            className="card border-0 h-100"
             style={{
-              background:
-                "linear-gradient(135deg, var(--background-white) 0%, #f8fdf8 100%)",
-              borderRadius: "12px",
-              border: "1px solid rgba(45, 90, 39, 0.1)",
+              borderRadius: "10px",
+              background: "white",
+              boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)",
               transition: "all 0.3s ease",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow =
-                "0 8px 25px rgba(45, 90, 39, 0.15)";
+              e.currentTarget.style.boxShadow = "0 12px 35px rgba(0, 0, 0, 0.2)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
+              e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.15)";
             }}
           >
             <div
               className="card-header bg-transparent border-0 py-3 px-3"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)",
-                borderBottom: "2px solid rgba(45, 90, 39, 0.3)",
+                background: "#f8f9fa",
+                borderBottom: "2px solid #dee2e6",
               }}
             >
               <div className="d-flex align-items-center">
@@ -181,157 +174,142 @@ const Profile = () => {
                   style={{
                     width: "32px",
                     height: "32px",
-                    background:
-                      "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
+                    background: "#2d5a27",
                     color: "white",
+                    boxShadow: "0 3px 10px rgba(45, 90, 39, 0.4)",
                   }}
                 >
                   <FaUser size={14} />
                 </div>
-                <h6
-                  className="mb-0 fw-bold"
-                  style={{ color: "var(--text-primary)" }}
-                >
+                <h6 className="mb-0 fw-bold" style={{ color: "#2d5a27" }}>
                   Profile Overview
                 </h6>
               </div>
             </div>
             <div className="card-body p-3">
               <div className="row g-2">
-{/* Enhanced Avatar and Basic Info */}
-<div className="col-12">
-  <div className="d-flex align-items-center mb-3">
-    <div className="position-relative me-3">
-      <div
-        className="rounded-circle border d-flex align-items-center justify-content-center position-relative"
-        style={{
-          width: "80px",
-          height: "80px",
-          // Check if avatar exists AND is a valid non-empty string
-          background: user?.avatar && user.avatar.trim() !== '' && user.avatar !== 'null' && user.avatar !== 'undefined'
-            ? "transparent"
-            : user?.role === 'admin' 
-              ? "linear-gradient(135deg, #8B4513 0%, #A0522D 100%)" // Brown gradient for admin
-              : "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)", // Green gradient for barangay
-          border: user?.role === 'admin' 
-            ? "3px solid #8B4513 !important" 
-            : "3px solid var(--primary-light) !important",
-          color: "white",
-          overflow: "hidden",
-        }}
-      >
-        {/* Only show image if avatar exists and is valid */}
-        {user?.avatar && user.avatar.trim() !== '' && user.avatar !== 'null' && user.avatar !== 'undefined' ? (
-          <img
-            src={user.avatar}
-            alt="Profile"
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              position: "absolute",
-              top: 0,
-              left: 0,
-            }}
-            onError={(e) => {
-              // Hide broken image and show the gradient background with icon
-              e.target.style.display = "none";
-              // Show the icon when image fails to load
-              const icon = e.target.nextSibling;
-              if (icon) {
-                icon.style.display = "flex";
-              }
-            }}
-          />
-        ) : null}
-        
-        {/* Always render the icon - shown when no avatar or avatar fails to load */}
-        <div 
-          className="d-flex align-items-center justify-content-center"
-          style={{
-            display: (user?.avatar && user.avatar.trim() !== '' && user.avatar !== 'null' && user.avatar !== 'undefined') 
-              ? "none" 
-              : "flex",
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          {user?.role === 'admin' ? (
-            <FaShieldAlt size={32} /> // Shield icon for admin
-          ) : (
-            <FaUser size={32} /> // User icon for barangay
-          )}
-        </div>
-      </div>
+                {/* Enhanced Avatar and Basic Info - CONTENT UNCHANGED */}
+                <div className="col-12">
+                  <div className="d-flex align-items-center mb-3">
+                    <div className="position-relative me-3">
+                      <div
+                        className="rounded-circle border d-flex align-items-center justify-content-center position-relative"
+                        style={{
+                          width: "80px",
+                          height: "80px",
+                          background: user?.avatar && user.avatar.trim() !== '' && user.avatar !== 'null' && user.avatar !== 'undefined'
+                            ? "transparent"
+                            : user?.role === 'admin' 
+                              ? "linear-gradient(135deg, #8B4513 0%, #A0522D 100%)"
+                              : "linear-gradient(135deg, #2d5a27 0%, #4a8c47 100%)",
+                          border: user?.role === 'admin' 
+                            ? "3px solid #8B4513 !important" 
+                            : "3px solid #4a8c47 !important",
+                          color: "white",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {user?.avatar && user.avatar.trim() !== '' && user.avatar !== 'null' && user.avatar !== 'undefined' ? (
+                          <img
+                            src={user.avatar}
+                            alt="Profile"
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = "none";
+                              const icon = e.target.nextSibling;
+                              if (icon) {
+                                icon.style.display = "flex";
+                              }
+                            }}
+                          />
+                        ) : null}
+                        
+                        <div 
+                          className="d-flex align-items-center justify-content-center"
+                          style={{
+                            display: (user?.avatar && user.avatar.trim() !== '' && user.avatar !== 'null' && user.avatar !== 'undefined') 
+                              ? "none" 
+                              : "flex",
+                            width: "100%",
+                            height: "100%",
+                          }}
+                        >
+                          {user?.role === 'admin' ? (
+                            <FaShieldAlt size={32} />
+                          ) : (
+                            <FaUser size={32} />
+                          )}
+                        </div>
+                      </div>
 
-      <div className="position-absolute bottom-0 end-0">
-        {user?.is_active ? (
-          <span
-            className="badge p-1"
-            style={{
-              background: "linear-gradient(135deg, #4CAF50 0%, #45a049 100%)",
-              color: "white",
-              fontSize: "0.6rem",
-            }}
-          >
-            Active
-          </span>
-        ) : (
-          <span
-            className="badge p-1"
-            style={{
-              background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)",
-              color: "white",
-              fontSize: "0.6rem",
-            }}
-          >
-            Inactive
-          </span>
-        )}
-      </div>
-    </div>
-    <div>
-      <h5
-        className="mb-1 fw-bold"
-        style={{ color: "var(--text-primary)" }}
-      >
-        {user?.name}
-      </h5>
-      <p className="text-muted mb-1 small">{user?.position}</p>
-      <p className="text-muted mb-0 small">
-        {getRoleDisplay(user?.role)}
-      </p>
-    </div>
-  </div>
-</div>
+                      <div className="position-absolute bottom-0 end-0">
+                        {user?.is_active ? (
+                          <span
+                            className="badge p-1"
+                            style={{
+                              background: "linear-gradient(135deg, #4CAF50 0%, #45a049 100%)",
+                              color: "white",
+                              fontSize: "0.6rem",
+                            }}
+                          >
+                            Active
+                          </span>
+                        ) : (
+                          <span
+                            className="badge p-1"
+                            style={{
+                              background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)",
+                              color: "white",
+                              fontSize: "0.6rem",
+                            }}
+                          >
+                            Inactive
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h5
+                        className="mb-1 fw-bold"
+                        style={{ color: "#2d5a27" }}
+                      >
+                        {user?.name}
+                      </h5>
+                      <p className="text-muted mb-1 small">{user?.position}</p>
+                      <p className="text-muted mb-0 small">
+                        {getRoleDisplay(user?.role)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                {/* Enhanced Timeline Information */}
+                {/* Enhanced Timeline Information - CONTENT UNCHANGED */}
                 <div className="col-12 col-sm-6">
                   <div
-                    className="d-flex align-items-center p-2 rounded-2 position-relative overflow-hidden"
+                    className="d-flex align-items-center p-2 rounded-3 position-relative overflow-hidden"
                     style={{
-                      background:
-                        "linear-gradient(135deg, rgba(45, 90, 39, 0.1) 0%, rgba(51, 108, 53, 0.1) 100%)",
+                      background: "rgba(45, 90, 39, 0.1)",
                       border: "1px solid rgba(45, 90, 39, 0.3)",
-                      boxShadow: "0 2px 6px rgba(45, 90, 39, 0.15)",
+                      boxShadow: "0 3px 12px rgba(45, 90, 39, 0.25)",
                       transition: "all 0.3s ease",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background =
-                        "linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)";
-                      e.currentTarget.style.borderColor =
-                        "rgba(45, 90, 39, 0.4)";
-                      e.currentTarget.style.boxShadow =
-                        "0 4px 12px rgba(45, 90, 39, 0.25)";
+                      e.currentTarget.style.background = "rgba(45, 90, 39, 0.15)";
+                      e.currentTarget.style.borderColor = "rgba(45, 90, 39, 0.4)";
+                      e.currentTarget.style.boxShadow = "0 5px 18px rgba(45, 90, 39, 0.35)";
                       e.currentTarget.style.transform = "translateY(-1px)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background =
-                        "linear-gradient(135deg, rgba(45, 90, 39, 0.1) 0%, rgba(51, 108, 53, 0.1) 100%)";
-                      e.currentTarget.style.borderColor =
-                        "rgba(45, 90, 39, 0.3)";
-                      e.currentTarget.style.boxShadow =
-                        "0 2px 6px rgba(45, 90, 39, 0.15)";
+                      e.currentTarget.style.background = "rgba(45, 90, 39, 0.1)";
+                      e.currentTarget.style.borderColor = "rgba(45, 90, 39, 0.3)";
+                      e.currentTarget.style.boxShadow = "0 3px 12px rgba(45, 90, 39, 0.25)";
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
@@ -345,7 +323,7 @@ const Profile = () => {
                       </small>
                       <span
                         className="fw-semibold small"
-                        style={{ color: "var(--text-primary)" }}
+                        style={{ color: "#2d5a27" }}
                       >
                         {formatDate(user?.created_at)}
                       </span>
@@ -353,26 +331,26 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Enhanced Status Badge */}
+                {/* Enhanced Status Badge - CONTENT UNCHANGED */}
                 <div className="col-12 col-sm-6">
                   <div
-                    className="d-flex align-items-center p-2 rounded-2 position-relative overflow-hidden"
+                    className="d-flex align-items-center p-2 rounded-3 position-relative overflow-hidden"
                     style={{
                       background: `linear-gradient(135deg, ${statusConfig.color}20 0%, ${statusConfig.color}15 100%)`,
                       border: `1px solid ${statusConfig.color}30`,
-                      boxShadow: `0 2px 6px ${statusConfig.color}15`,
+                      boxShadow: `0 3px 12px ${statusConfig.color}15`,
                       transition: "all 0.3s ease",
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = `linear-gradient(135deg, ${statusConfig.color}25 0%, ${statusConfig.color}20 100%)`;
                       e.currentTarget.style.borderColor = `${statusConfig.color}40`;
-                      e.currentTarget.style.boxShadow = `0 4px 12px ${statusConfig.color}25`;
+                      e.currentTarget.style.boxShadow = `0 5px 18px ${statusConfig.color}25`;
                       e.currentTarget.style.transform = "translateY(-1px)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = `linear-gradient(135deg, ${statusConfig.color}20 0%, ${statusConfig.color}15 100%)`;
                       e.currentTarget.style.borderColor = `${statusConfig.color}30`;
-                      e.currentTarget.style.boxShadow = `0 2px 6px ${statusConfig.color}15`;
+                      e.currentTarget.style.boxShadow = `0 3px 12px ${statusConfig.color}15`;
                       e.currentTarget.style.transform = "translateY(0)";
                     }}
                   >
@@ -399,16 +377,15 @@ const Profile = () => {
                   </div>
                 </div>
 
-                {/* Enhanced Status Details */}
+                {/* Enhanced Status Details - CONTENT UNCHANGED */}
                 {user?.approved_at && (
                   <div className="col-12 col-sm-6">
                     <div
-                      className="d-flex align-items-center p-2 rounded-2 position-relative overflow-hidden"
+                      className="d-flex align-items-center p-2 rounded-3 position-relative overflow-hidden"
                       style={{
-                        background:
-                          "linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(69, 160, 73, 0.1) 100%)",
+                        background: "rgba(76, 175, 80, 0.1)",
                         border: "1px solid rgba(76, 175, 80, 0.3)",
-                        boxShadow: "0 2px 6px rgba(76, 175, 80, 0.15)",
+                        boxShadow: "0 3px 12px rgba(76, 175, 80, 0.25)",
                         transition: "all 0.3s ease",
                       }}
                     >
@@ -422,7 +399,7 @@ const Profile = () => {
                         </small>
                         <span
                           className="fw-semibold small"
-                          style={{ color: "var(--text-primary)" }}
+                          style={{ color: "#2d5a27" }}
                         >
                           {formatDate(user?.approved_at)}
                         </span>
@@ -434,12 +411,11 @@ const Profile = () => {
                 {user?.rejected_at && (
                   <div className="col-12 col-sm-6">
                     <div
-                      className="d-flex align-items-center p-2 rounded-2 position-relative overflow-hidden"
+                      className="d-flex align-items-center p-2 rounded-3 position-relative overflow-hidden"
                       style={{
-                        background:
-                          "linear-gradient(135deg, rgba(255, 107, 107, 0.1) 0%, rgba(238, 90, 82, 0.1) 100%)",
+                        background: "rgba(255, 107, 107, 0.1)",
                         border: "1px solid rgba(255, 107, 107, 0.3)",
-                        boxShadow: "0 2px 6px rgba(255, 107, 107, 0.15)",
+                        boxShadow: "0 3px 12px rgba(255, 107, 107, 0.25)",
                         transition: "all 0.3s ease",
                       }}
                     >
@@ -453,7 +429,7 @@ const Profile = () => {
                         </small>
                         <span
                           className="fw-semibold small"
-                          style={{ color: "var(--text-primary)" }}
+                          style={{ color: "#2d5a27" }}
                         >
                           {formatDate(user?.rejected_at)}
                         </span>
@@ -466,106 +442,101 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Quick Actions Card - Enhanced with Consistent Background */}
+        {/* Quick Actions Card - Old Project Style */}
         <div className="col-12 col-lg-4">
           <div
-            className="card border-0 shadow-sm h-100"
+            className="card border-0 h-100"
             style={{
-              background:
-                "linear-gradient(135deg, var(--background-white) 0%, #f8fdf8 100%)",
-              borderRadius: "12px",
-              border: "1px solid rgba(45, 90, 39, 0.1)",
+              borderRadius: "10px",
+              background: "white",
+              boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)",
               transition: "all 0.3s ease",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow =
-                "0 8px 25px rgba(45, 90, 39, 0.15)";
+              e.currentTarget.style.boxShadow = "0 12px 35px rgba(0, 0, 0, 0.2)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
+              e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.15)";
             }}
           >
             <div
               className="card-header bg-transparent border-0 py-3 px-3"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)",
-                borderBottom: "2px solid rgba(45, 90, 39, 0.2)",
+                background: "#f8f9fa",
+                borderBottom: "2px solid #dee2e6",
               }}
             >
-              <h6
-                className="mb-0 fw-bold"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h6 className="mb-0 fw-bold" style={{ color: "#2d5a27" }}>
                 Quick Actions
               </h6>
             </div>
             <div className="card-body p-3 d-flex flex-column">
-              {/* UPDATED: Contact Support Button - Now uses the same modal as Settings.jsx */}
+              {/* Contact Support Button - CONTENT UNCHANGED */}
               <button
                 className="btn w-100 d-flex align-items-center justify-content-center py-2 mb-2 position-relative overflow-hidden"
                 onClick={handleContactSupport}
                 style={{
-                  background:
-                    "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
+                  background: "#2d5a27",
                   color: "white",
                   border: "none",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   fontWeight: "600",
-                  fontSize: "0.875rem",
+                  fontSize: "0.85rem",
                   transition: "all 0.3s ease",
-                  boxShadow: "0 2px 8px rgba(45, 90, 39, 0.2)",
+                  boxShadow: "0 4px 15px rgba(45, 90, 39, 0.4)",
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.transform = "translateY(-1px)";
-                  e.target.style.boxShadow = "0 4px 15px rgba(45, 90, 39, 0.3)";
+                  e.target.style.transform = "translateY(-2px)";
+                  e.target.style.boxShadow = "0 8px 25px rgba(45, 90, 39, 0.6)";
+                  e.target.style.background = "#4a8c47";
                 }}
                 onMouseLeave={(e) => {
                   e.target.style.transform = "translateY(0)";
-                  e.target.style.boxShadow = "0 2px 8px rgba(45, 90, 39, 0.2)";
+                  e.target.style.boxShadow = "0 4px 15px rgba(45, 90, 39, 0.4)";
+                  e.target.style.background = "#2d5a27";
                 }}
               >
                 <FaEnvelope className="me-2" size={12} />
-                Contact Support
+                Contact Administrator
                 <FaArrowRight className="ms-2" size={10} />
               </button>
 
-              <div className="text-center mt-auto">
-                <small className="text-muted">📞 Mon-Fri, 8AM-5PM</small>
+              <div className="text-center mt-2">
+                <small className="text-muted" style={{ fontSize: "0.75rem" }}>
+                  <FaClock className="me-1" size={10} />
+                  Mon-Fri, 8AM-5PM
+                </small>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Personal Information Card - Enhanced */}
+        {/* Personal Information Card - Old Project Style */}
         <div className="col-12 col-lg-6">
           <div
-            className="card border-0 shadow-sm h-100"
+            className="card border-0 h-100"
             style={{
-              background:
-                "linear-gradient(135deg, var(--background-white) 0%, #fafefa 100%)",
-              borderRadius: "12px",
-              border: "1px solid rgba(45, 90, 39, 0.1)",
+              borderRadius: "10px",
+              background: "white",
+              boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)",
               transition: "all 0.3s ease",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow =
-                "0 8px 25px rgba(45, 90, 39, 0.15)";
+              e.currentTarget.style.boxShadow = "0 12px 35px rgba(0, 0, 0, 0.2)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 6px rgba(0, 0, 0, 0.1)";
+              e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.15)";
             }}
           >
             <div
               className="card-header bg-transparent border-0 py-3 px-3"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(45, 90, 39, 0.15) 0%, rgba(51, 108, 53, 0.15) 100%)",
-                borderBottom: "2px solid rgba(74, 140, 71, 0.2)",
+                background: "#f8f9fa",
+                borderBottom: "2px solid #dee2e6",
               }}
             >
               <div className="d-flex align-items-center">
@@ -574,23 +545,21 @@ const Profile = () => {
                   style={{
                     width: "28px",
                     height: "28px",
-                    background:
-                      "linear-gradient(135deg, var(--accent-color) 0%, var(--accent-light) 100%)",
+                    background: "#2196f3",
                     color: "white",
+                    boxShadow: "0 3px 10px rgba(33, 150, 243, 0.4)",
                   }}
                 >
                   <FaUser size={12} />
                 </div>
-                <h6
-                  className="mb-0 fw-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
+                <h6 className="mb-0 fw-semibold" style={{ color: "#2d5a27" }}>
                   Personal Information
                 </h6>
               </div>
             </div>
             <div className="card-body p-3">
               <div className="row g-2">
+                {/* Personal Information Items - CONTENT UNCHANGED */}
                 {[
                   {
                     icon: FaUser,
@@ -631,30 +600,24 @@ const Profile = () => {
                 ].map((item, index) => (
                   <div key={index} className="col-12 col-sm-6">
                     <div
-                      className="d-flex align-items-center p-2 rounded-2 mb-2 border"
+                      className="d-flex align-items-center p-2 rounded-3 mb-2 border position-relative overflow-hidden"
                       style={{
-                        background:
-                          "linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)",
-                        borderColor: "rgba(45, 90, 39, 0.2) !important",
-                        boxShadow: "0 2px 6px rgba(45, 90, 39, 0.18)",
+                        background: "white",
+                        borderColor: `${item.color}40 !important`,
+                        boxShadow: "0 3px 12px rgba(0, 0, 0, 0.15)",
                         transition: "all 0.3s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background =
-                          "linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(248, 250, 248, 1) 100%)";
-                        e.currentTarget.style.borderColor = `${item.color}60 !important`;
-                        e.currentTarget.style.boxShadow =
-                          "0 4px 12px rgba(45, 90, 39, 0.15)";
+                        e.currentTarget.style.background = "#f8f9fa";
+                        e.currentTarget.style.borderColor = `${item.color}80 !important`;
                         e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = "0 5px 18px rgba(0, 0, 0, 0.25)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background =
-                          "linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)";
-                        e.currentTarget.style.borderColor =
-                          "rgba(45, 90, 39, 0.2) !important";
-                        e.currentTarget.style.boxShadow =
-                          "0 2px 6px rgba(45, 90, 39, 0.08)";
+                        e.currentTarget.style.background = "white";
+                        e.currentTarget.style.borderColor = `${item.color}40 !important`;
                         e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 3px 12px rgba(0, 0, 0, 0.15)";
                       }}
                     >
                       <item.icon
@@ -671,7 +634,7 @@ const Profile = () => {
                         </small>
                         <span
                           className="fw-semibold small"
-                          style={{ color: "var(--text-primary)" }}
+                          style={{ color: "#2d5a27" }}
                         >
                           {item.value}
                         </span>
@@ -684,35 +647,31 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* Location Information Card - Enhanced */}
+        {/* Location Information Card - Old Project Style */}
         {(user?.barangay_name || user?.municipality) && (
           <div className="col-12 col-lg-6">
             <div
-              className="card border-0 shadow-sm h-100"
+              className="card border-0 h-100"
               style={{
-                background:
-                  "linear-gradient(135deg, var(--background-white) 0%, #f8fcf8 100%)",
-                borderRadius: "12px",
-                border: "1px solid rgba(255, 167, 38, 0.2)",
+                borderRadius: "10px",
+                background: "white",
+                boxShadow: "0 8px 25px rgba(0, 0, 0, 0.15)",
                 transition: "all 0.3s ease",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow =
-                  "0 8px 25px rgba(45, 90, 39, 0.15)";
+                e.currentTarget.style.boxShadow = "0 12px 35px rgba(0, 0, 0, 0.2)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 6px rgba(0, 0, 0, 0.1)";
+                e.currentTarget.style.boxShadow = "0 8px 25px rgba(0, 0, 0, 0.15)";
               }}
             >
               <div
                 className="card-header bg-transparent border-0 py-3 px-3"
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgba(255, 167, 38, 0.15) 0%, rgba(255, 152, 0, 0.15) 100%)",
-                  borderBottom: "2px solid rgba(255, 167, 38, 0.2)",
+                  background: "#f8f9fa",
+                  borderBottom: "2px solid #dee2e6",
                 }}
               >
                 <div className="d-flex align-items-center">
@@ -721,23 +680,21 @@ const Profile = () => {
                     style={{
                       width: "28px",
                       height: "28px",
-                      background:
-                        "linear-gradient(135deg, #ffa726 0%, #ff9800 100%)",
+                      background: "#ffc107",
                       color: "white",
+                      boxShadow: "0 3px 10px rgba(255, 193, 7, 0.4)",
                     }}
                   >
                     <FaMapMarkerAlt size={12} />
                   </div>
-                  <h6
-                    className="mb-0 fw-semibold"
-                    style={{ color: "var(--text-primary)" }}
-                  >
+                  <h6 className="mb-0 fw-semibold" style={{ color: "#2d5a27" }}>
                     Location Information
                   </h6>
                 </div>
               </div>
               <div className="card-body p-3">
                 <div className="row g-2">
+                  {/* Location Information Items - CONTENT UNCHANGED */}
                   {[
                     {
                       icon: FaBuilding,
@@ -754,30 +711,24 @@ const Profile = () => {
                   ].map((item, index) => (
                     <div key={index} className="col-12">
                       <div
-                        className="d-flex align-items-start p-2 rounded-2 mb-2 border"
+                        className="d-flex align-items-start p-2 rounded-3 mb-2 border position-relative overflow-hidden"
                         style={{
-                          background:
-                            "linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)",
-                          borderColor: "rgba(45, 90, 39, 0.2) !important",
-                          boxShadow: "0 2px 6px rgba(45, 90, 39, 0.12)",
+                          background: "white",
+                          borderColor: `${item.color}40 !important`,
+                          boxShadow: "0 3px 12px rgba(0, 0, 0, 0.15)",
                           transition: "all 0.3s ease",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background =
-                            "linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(248, 250, 248, 1) 100%)";
-                          e.currentTarget.style.borderColor = `${item.color}60 !important`;
-                          e.currentTarget.style.boxShadow =
-                            "0 4px 12px rgba(45, 90, 39, 0.15)";
+                          e.currentTarget.style.background = "#f8f9fa";
+                          e.currentTarget.style.borderColor = `${item.color}80 !important`;
                           e.currentTarget.style.transform = "translateY(-1px)";
+                          e.currentTarget.style.boxShadow = "0 5px 18px rgba(0, 0, 0, 0.25)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background =
-                            "linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 248, 0.9) 100%)";
-                          e.currentTarget.style.borderColor =
-                            "rgba(45, 90, 39, 0.2) !important";
-                          e.currentTarget.style.boxShadow =
-                            "0 2px 6px rgba(45, 90, 39, 0.08)";
+                          e.currentTarget.style.background = "white";
+                          e.currentTarget.style.borderColor = `${item.color}40 !important`;
                           e.currentTarget.style.transform = "translateY(0)";
+                          e.currentTarget.style.boxShadow = "0 3px 12px rgba(0, 0, 0, 0.15)";
                         }}
                       >
                         <item.icon
@@ -789,7 +740,7 @@ const Profile = () => {
                           <small
                             className="fw-semibold d-block"
                             style={{
-                              color: "var(--text-primary)",
+                              color: "#2d5a27",
                               fontSize: "0.75rem",
                             }}
                           >
@@ -811,31 +762,24 @@ const Profile = () => {
           </div>
         )}
 
-        {/* Rejection Reason Card (Only for rejected users) */}
+        {/* Rejection Reason Card - Old Project Style */}
         {user?.status === "rejected" && user?.rejection_reason && (
           <div className="col-12">
             <div
-              className="card border-0 shadow-sm"
+              className="card border-0"
               style={{
-                background:
-                  "linear-gradient(135deg, rgba(255, 107, 107, 0.08) 0%, rgba(238, 90, 82, 0.08) 100%)",
-                border: "1px solid rgba(255, 107, 107, 0.2)",
-                boxShadow: "0 2px 6px rgba(255, 107, 107, 0.1)",
+                background: "rgba(255, 107, 107, 0.03)",
+                border: "1px solid rgba(255, 107, 107, 0.1)",
+                boxShadow: "0 6px 20px rgba(255, 107, 107, 0.2)",
                 transition: "all 0.3s ease",
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background =
-                  "linear-gradient(135deg, rgba(255, 107, 107, 0.12) 0%, rgba(238, 90, 82, 0.12) 100%)";
-                e.currentTarget.style.borderColor = "rgba(255, 107, 107, 0.3)";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 12px rgba(255, 107, 107, 0.15)";
+                e.currentTarget.style.background = "rgba(255, 107, 107, 0.05)";
+                e.currentTarget.style.boxShadow = "0 8px 25px rgba(255, 107, 107, 0.3)";
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background =
-                  "linear-gradient(135deg, rgba(255, 107, 107, 0.08) 0%, rgba(238, 90, 82, 0.08) 100%)";
-                e.currentTarget.style.borderColor = "rgba(255, 107, 107, 0.2)";
-                e.currentTarget.style.boxShadow =
-                  "0 2px 6px rgba(255, 107, 107, 0.1)";
+                e.currentTarget.style.background = "rgba(255, 107, 107, 0.03)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(255, 107, 107, 0.2)";
               }}
             >
               <div className="card-body p-2">
@@ -846,14 +790,13 @@ const Profile = () => {
                     </p>
                   </div>
                   <div className="col-auto">
-                    {/* UPDATED: Appeal Decision Button - Now uses the same modal as Settings.jsx */}
+                    {/* Appeal Decision Button - CONTENT UNCHANGED */}
                     <button
                       className="btn btn-sm position-relative overflow-hidden"
                       onClick={handleContactSupport}
                       style={{
-                        background:
-                          "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
-                        color: "var(--background-white)",
+                        background: "#2d5a27",
+                        color: "white",
                         border: "none",
                         borderRadius: "4px",
                         fontSize: "0.75rem",
@@ -864,13 +807,11 @@ const Profile = () => {
                       }}
                       onMouseEnter={(e) => {
                         e.target.style.transform = "translateY(-1px)";
-                        e.target.style.boxShadow =
-                          "0 4px 12px rgba(45, 90, 39, 0.3)";
+                        e.target.style.boxShadow = "0 4px 12px rgba(45, 90, 39, 0.3)";
                       }}
                       onMouseLeave={(e) => {
                         e.target.style.transform = "translateY(0)";
-                        e.target.style.boxShadow =
-                          "0 2px 6px rgba(45, 90, 39, 0.2)";
+                        e.target.style.boxShadow = "0 2px 6px rgba(45, 90, 39, 0.2)";
                       }}
                     >
                       Appeal Decision
@@ -886,4 +827,4 @@ const Profile = () => {
   );
 };
 
-export default Profile;
+export default BarangayProfile;

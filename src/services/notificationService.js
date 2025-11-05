@@ -191,9 +191,35 @@ export const showRejectionModal = (userName) => {
   });
 };
 
-
 // SweetAlert2 configurations with green theme
 export const showAlert = {
+
+
+    prompt: (title, text, confirmButtonText, cancelButtonText, defaultValue = "", inputType = "text") => {
+    return Swal.fire({
+      title,
+      text,
+      input: inputType,
+      inputValue: defaultValue,
+      showCancelButton: true,
+      confirmButtonText,
+      cancelButtonText,
+      customClass: {
+        confirmButton: 'btn btn-primary',
+        cancelButton: 'btn btn-secondary'
+      },
+      buttonsStyling: false,
+      preConfirm: (value) => {
+        if (!value || value.trim() === '') {
+          Swal.showValidationMessage('Please provide a reason');
+          return false;
+        }
+        return value;
+      }
+    });
+  },
+
+  
   // Success alert
   success: (title, text = "", timer = 3000) => {
     return Swal.fire({
@@ -209,6 +235,21 @@ export const showAlert = {
     });
   },
 
+  // Add this to your showAlert object in notificationService.js
+customSuccess: (title, htmlContent, confirmButtonText = "Okay") => {
+  return Swal.fire({
+    title,
+    html: htmlContent,
+    icon: "success",
+    confirmButtonText,
+    confirmButtonColor: "#2d5a27", // Your green primary color
+    background: "#fff",
+    color: "#2d5a27",
+    customClass: {
+      confirmButton: "custom-success-btn"
+    }
+  });
+},
   // Error alert
   error: (title, text = "", timer = 4000) => {
     return Swal.fire({
@@ -317,6 +358,22 @@ export const showAlert = {
       },
     });
   },
+
+// Processing alert - FIXED VERSION
+processing: (title, text) => {
+  return Swal.fire({
+    title: title,
+    text: text,
+    icon: 'info',
+    showConfirmButton: false,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    allowEnterKey: false, // Add this line
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+},
 
   // Close any open alert
   close: () => {

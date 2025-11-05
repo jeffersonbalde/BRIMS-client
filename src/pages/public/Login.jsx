@@ -7,11 +7,11 @@ import {
   FaEyeSlash,
   FaSpinner,
 } from "react-icons/fa";
-import { useAuth } from "../contexts/AuthContext";
-import { showAlert, showToast } from "../services/notificationService";
-import LoginBackground from "../assets/images/login-background.png";
-import Logo from "../assets/images/logo.png";
-import TextLogo from "../assets/images/text-logo.png";
+import { useAuth } from "../../contexts/AuthContext";
+import { showAlert, showToast } from "../../services/notificationService";
+import LoginBackground from "../../assets/images/login-background.png";
+import Logo from "../../assets/images/logo.png";
+import TextLogo from "../../assets/images/text-logo.png";
 import { Link } from "react-router-dom";
 
 export default function Login() {
@@ -26,7 +26,7 @@ export default function Login() {
   // Theme variables for easy maintenance
   const theme = {
     primary: "#2d5a27",
-    primaryDark: "#1f3d1a", 
+    primaryDark: "#1f3d1a",
     primaryLight: "#336C35",
     textPrimary: "#1a2a1a",
     textSecondary: "#4a5c4a",
@@ -107,11 +107,11 @@ export default function Login() {
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
           backgroundColor: theme.backgroundLight,
-          filter: backgroundLoaded ? 'blur(0px)' : 'blur(10px)',
-          transition: 'filter 0.5s ease-in-out',
+          filter: backgroundLoaded ? "blur(0px)" : "blur(10px)",
+          transition: "filter 0.5s ease-in-out",
         }}
       />
-      
+
       {/* Form Content - Always Clear */}
       <div
         className="bg-white rounded-4 shadow-lg p-4 p-sm-5 w-100 mx-4 mx-sm-0 position-relative"
@@ -264,7 +264,7 @@ export default function Login() {
           </div>
 
           {/* Forgot Password */}
-          <div
+          {/* <div
             className="text-end mb-3 fw-semibold"
             style={{ marginTop: "-10px" }}
           >
@@ -276,7 +276,7 @@ export default function Login() {
             >
               Forgot password?
             </a>
-          </div>
+          </div> */}
 
           {/* Submit Button */}
           <button

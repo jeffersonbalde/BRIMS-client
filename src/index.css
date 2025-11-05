@@ -1,50 +1,55 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
 
 :root {
-  /* Enhanced Green Color Scheme - Inspired by Your Logo */
-  --primary-color: #2d5a27;      /* Your original logo green */
-  --primary-dark: #1f3d1a;       /* Darker version */
-  --primary-light: #336C35;      /* Your second green - brighter accent */
-  --accent-color: #4a8c47;       /* Fresh accent green */
-  --accent-light: #5da55a;       /* Light accent for highlights */
+  /* Original Logo Colors Enhanced */
+  --primary-color: #336B31;
+  --primary-dark: #285426;
+  --primary-light: #3D7C3A;
+  --accent-color: #C74A68;
+  --accent-light: #D56A83;
+  --accent-dark: #B23A58;
   
-  /* Topbar Colors - Modern Gradient with Your Greens */
+  /* Topbar Colors - Original Green */
   --topbar-bg: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
   --topbar-text: #ffffff;
   --topbar-hover: rgba(255, 255, 255, 0.15);
-  --topbar-shadow: rgba(45, 90, 39, 0.25);
+  --topbar-shadow: rgba(51, 107, 49, 0.25);
   
-  /* Sidebar Colors - Sophisticated Dark Green Theme */
-  --sidebar-bg: linear-gradient(180deg, #1a2a1a 0%, #243824 100%);
-  --sidebar-dark: #152015;
-  --sidebar-text: #f0f7f0;
-  --sidebar-hover: rgba(51, 108, 53, 0.2);
-  --sidebar-active: var(--primary-light);
-  --sidebar-border: rgba(51, 108, 53, 0.3);
-  --sidebar-shadow: rgba(0, 0, 0, 0.1);
+  /* Sidebar Colors - Enhanced Dark */
+  --sidebar-bg: linear-gradient(180deg, #1A1F1A 0%, #2A322A 100%);
+  --sidebar-dark: #151815;
+  --sidebar-text: #f8f8f8;
+  --sidebar-hover: rgba(199, 74, 104, 0.2);
+  --sidebar-active: var(--accent-color);
+  --sidebar-border: rgba(199, 74, 104, 0.3);
+  --sidebar-shadow: rgba(0, 0, 0, 0.15);
 
-  /* Footer Colors - Distinct from main content */
-  --footer-bg: #f1f5f1;
-  --footer-border: #d1e0d1;
-  --footer-text: #4a5c4a;
+  /* Footer Colors */
+  --footer-bg: #f1f8e9;
+  --footer-border: #dcedc8;
+  --footer-text: #336B31;
 
-  /* Neutral Colors - Modern Gray Scale */
-  --text-primary: #1a2a1a;
-  --text-secondary: #4a5c4a;
-  --text-muted: #6b7a6b;
-  --background-light: #f8faf8;
+  /* Neutral Colors - UPDATED FOR BETTER CONTRAST */
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #6b7280;
+  --background-light: #ffffff;
   --background-white: #ffffff;
-  --border-color: #e0e6e0;
+  --border-color: #e5e7eb;
 
   /* Button Colors */
-  --btn-primary-bg: var(--primary-light);
-  --btn-primary-hover: var(--accent-color);
+  --btn-primary-bg: var(--primary-color);
+  --btn-primary-hover: var(--primary-dark);
   --btn-primary-text: #ffffff;
+  --btn-accent-bg: var(--accent-color);
+  --btn-accent-hover: var(--accent-dark);
+  --btn-accent-text: #ffffff;
 
   /* Input Colors */
-  --input-bg: #f8faf8;
-  --input-text: #1a2a1a;
-  --input-border: #c8d0c8;
+  --input-bg: #ffffff;
+  --input-text: #1a1a1a;
+  --input-border: #d1d5db;
+  --input-focus: rgba(199, 74, 104, 0.25);
 }
 
 /* ===== MAIN LAYOUT CONTAINER ===== */
@@ -1486,3 +1491,765 @@ body {
     transform: translateX(0);
   }
 }
+
+
+/* ===== APPROVALS COMPONENT FINAL FIXES ===== */
+
+/* Bulk Approve Button Hover Effect */
+.bulk-approve-btn {
+  transition: all 0.3s ease !important;
+}
+
+.bulk-approve-btn:hover:not(:disabled) {
+  background-color: var(--accent-dark) !important;
+  border-color: var(--accent-dark) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(199, 74, 104, 0.4);
+}
+
+/* Avatar Placeholder with Primary Color */
+.avatar-placeholder {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%) !important;
+  border: 2px solid var(--primary-light) !important;
+}
+
+/* Pagination Button Hover Effects with Better Contrast */
+.pagination-btn:hover:not(:disabled) {
+  background-color: var(--primary-light) !important;
+  border-color: var(--primary-color) !important;
+  color: var(--primary-dark) !important;
+  transform: translateY(-1px);
+}
+
+.pagination-page-btn:hover:not(:disabled) {
+  background-color: var(--primary-light) !important;
+  border-color: var(--primary-color) !important;
+  color: var(--primary-dark) !important;
+}
+
+.pagination-page-btn.active {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+/* Action button styles */
+.action-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-width: 1px !important;
+  transition: all 0.2s ease-in-out !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 1 !important;
+}
+
+.action-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+/* View Details Button */
+.btn-view {
+  border-color: var(--primary-color) !important;
+  color: var(--primary-color) !important;
+  background-color: rgba(45, 90, 39, 0.3) !important;
+}
+
+.btn-view:hover:not(:disabled) {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(45, 90, 39, 0.3);
+}
+
+/* Approve Button */
+.btn-approve {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+  background-color: rgba(74, 140, 71, 0.3) !important;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(74, 140, 71, 0.3);
+}
+
+/* Reject Button */
+.btn-reject {
+  border-color: #dc3545 !important;
+  color: #dc3545 !important;
+  background-color: rgba(220, 53, 69, 0.3) !important;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Ensure icons are always visible and properly sized */
+.action-btn i {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.action-btn .spinner-border-sm {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .table th {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.25rem !important;
+  }
+  
+  .table td {
+    font-size: 0.8rem !important;
+    padding: 0.5rem 0.25rem !important;
+  }
+  
+  .action-btn {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  
+  .action-btn i {
+    font-size: 0.7rem !important;
+  }
+  
+  /* Fix avatar size on mobile */
+  .avatar-placeholder {
+    width: 35px !important;
+    height: 35px !important;
+  }
+}
+
+/* Stats card improvements */
+.stats-card {
+  background-color: var(--background-white);
+  border: none;
+  box-shadow: 0 2px 8px rgba(45, 89, 48, 0.08);
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 4px 12px rgba(45, 89, 48, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Table responsive container */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure proper horizontal scrolling on mobile */
+@media (max-width: 576px) {
+  .table-responsive {
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+  }
+}
+
+/* ===== APPROVALS COMPONENT FINAL TOUCHES ===== */
+
+/* Table Header Text Responsiveness */
+.table-header-text {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Mobile responsive table headers */
+@media (max-width: 768px) {
+  .table-header-text {
+    font-size: 0.75rem !important;
+  }
+  
+  .table th {
+    font-size: 0.75rem !important;
+    padding: 0.5rem 0.25rem !important;
+  }
+  
+  .table td {
+    font-size: 0.75rem !important;
+    padding: 0.5rem 0.25rem !important;
+  }
+}
+
+/* Pagination Button Hover Effects with Better Contrast */
+.pagination-btn:hover:not(:disabled) {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: white !important;
+  transform: translateY(-1px);
+}
+
+.pagination-page-btn:hover:not(:disabled) {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: white !important;
+  transform: translateY(-1px);
+}
+
+.pagination-page-btn.active {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+  color: white !important;
+}
+
+.pagination-page-btn.active:hover {
+  background-color: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+  color: white !important;
+}
+
+/* Custom Scrollbar for Table */
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: var(--background-light);
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: var(--primary-light);
+  border-radius: 4px;
+  border: 2px solid var(--background-light);
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* Firefox Scrollbar */
+.table-responsive {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-light) var(--background-light);
+}
+
+/* Bulk Approve Button Hover Effect */
+.bulk-approve-btn {
+  transition: all 0.3s ease !important;
+}
+
+.bulk-approve-btn:hover:not(:disabled) {
+  background-color: var(--accent-dark) !important;
+  border-color: var(--accent-dark) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(199, 74, 104, 0.4);
+}
+
+/* Avatar Placeholder with Primary Color */
+.avatar-placeholder {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%) !important;
+  border: 2px solid var(--primary-light) !important;
+}
+
+/* Action button styles */
+.action-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-width: 1px !important;
+  transition: all 0.2s ease-in-out !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 1 !important;
+}
+
+.action-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+/* View Details Button */
+.btn-view {
+  border-color: var(--primary-color) !important;
+  color: var(--primary-color) !important;
+  background-color: rgba(45, 90, 39, 0.3) !important;
+}
+
+.btn-view:hover:not(:disabled) {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(45, 90, 39, 0.3);
+}
+
+/* Approve Button */
+.btn-approve {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+  background-color: rgba(74, 140, 71, 0.3) !important;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(74, 140, 71, 0.3);
+}
+
+/* Reject Button */
+.btn-reject {
+  border-color: #dc3545 !important;
+  color: #dc3545 !important;
+  background-color: rgba(220, 53, 69, 0.3) !important;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Ensure icons are always visible and properly sized */
+.action-btn i {
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.action-btn .spinner-border-sm {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .action-btn {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  
+  .action-btn i {
+    font-size: 0.7rem !important;
+  }
+  
+  /* Fix avatar size on mobile */
+  .avatar-placeholder {
+    width: 35px !important;
+    height: 35px !important;
+  }
+}
+
+/* Stats card improvements */
+.stats-card {
+  background-color: var(--background-white);
+  border: none;
+  box-shadow: 0 2px 8px rgba(45, 89, 48, 0.08);
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 4px 12px rgba(45, 89, 48, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Table responsive container */
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure proper horizontal scrolling on mobile */
+@media (max-width: 576px) {
+  .table-responsive {
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+  }
+}
+
+/* Incident-specific styles to avoid conflicts */
+.incident-modal {
+  z-index: 1060;
+}
+
+.incident-form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(51, 107, 49, 0.25);
+}
+
+.incident-form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(51, 107, 49, 0.25);
+}
+
+.incident-btn-submit {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+}
+
+.incident-btn-submit:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+}
+
+.incident-btn-cancel {
+  border-color: var(--border-color);
+}
+
+.incident-btn-refresh:hover {
+  background-color: var(--primary-light);
+  border-color: var(--primary-light);
+  color: white;
+}
+
+.incident-btn-report {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+}
+
+.incident-btn-report:hover {
+  background-color: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+}
+
+.incident-stat-card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.incident-stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.incident-table-card {
+  border: 1px solid var(--border-color);
+}
+
+.incident-data-table th {
+  border-bottom: 2px solid var(--primary-color);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.incident-table-row:hover {
+  background-color: rgba(51, 107, 49, 0.05);
+}
+
+.incident-casualty-card {
+  border: 1px solid var(--border-color);
+}
+
+.incident-empty-state {
+  background-color: var(--background-light);
+}
+
+.incident-subtitle {
+  font-size: 0.9rem;
+}
+
+.incident-description {
+  max-width: 200px;
+}
+
+.incident-status-select {
+  width: auto;
+  min-width: 120px;
+}
+
+/* Border left colors for stat cards */
+.border-left-primary { border-left: 4px solid var(--primary-color) !important; }
+.border-left-warning { border-left: 4px solid #ffc107 !important; }
+.border-left-info { border-left: 4px solid #17a2b8 !important; }
+.border-left-success { border-left: 4px solid #198754 !important; }
+.border-left-secondary { border-left: 4px solid #6c757d !important; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .incident-data-table {
+    font-size: 0.875rem;
+  }
+  
+  .incident-stat-card .h5 {
+    font-size: 1.1rem;
+  }
+  
+  .incident-btn-view,
+  .incident-btn-edit,
+  .incident-btn-delete {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .incident-modal .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  .incident-stat-card {
+    margin-bottom: 1rem;
+  }
+}
+
+/* ===== MODAL FIXES ===== */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.modal-container {
+  width: 100%;
+  max-width: 800px;
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: var(--background-white);
+  border-radius: 12px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Incident Modal Specific Styles */
+.incident-modal-backdrop {
+  z-index: 9999 !important;
+}
+
+.incident-modal-container {
+  z-index: 10000 !important;
+}
+
+.incident-modal-content {
+  z-index: 10001 !important;
+}
+
+/* Ensure modals are above everything */
+.sb-topnav {
+  z-index: 1039 !important;
+}
+
+.sb-sidenav {
+  z-index: 1038 !important;
+}
+
+/* Mobile responsive modal adjustments */
+@media (max-width: 768px) {
+  .modal-backdrop {
+    padding: 0.5rem;
+  }
+  
+  .modal-container {
+    max-width: 100%;
+    max-height: calc(100vh - 1rem);
+  }
+  
+  .modal-content {
+    margin: 0;
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
+  }
+  
+  .modal-body {
+    padding: 1rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .modal-backdrop {
+    padding: 0.25rem;
+  }
+  
+  .modal-container {
+    max-height: calc(100vh - 0.5rem);
+  }
+  
+  .modal-content {
+    max-height: calc(100vh - 0.5rem);
+  }
+  
+  .modal-body {
+    padding: 0.75rem !important;
+  }
+  
+  .modal-header,
+  .modal-footer {
+    padding: 0.75rem !important;
+  }
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* Ensure form elements are properly styled in modals */
+.modal-content .form-control:focus,
+.modal-content .form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(51, 107, 49, 0.25);
+}
+
+/* Modal header gradient fix */
+.modal-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%) !important;
+  border-bottom: none !important;
+}
+
+/* Button styles in modals */
+.modal-footer .btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modal-footer .btn-primary {
+  background-color: var(--btn-primary-bg);
+  border-color: var(--btn-primary-bg);
+}
+
+.modal-footer .btn-primary:hover:not(:disabled) {
+  background-color: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+  transform: translateY(-1px);
+}
+
+.modal-footer .btn-outline-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* Add to your CSS file or style tag */
+.table-fixed-layout {
+  table-layout: fixed;
+}
+
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+/* Ensure consistent row heights */
+.table tbody tr {
+  height: 70px;
+}
+
+/* Style for disabled buttons with better visibility */
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.action-btn:disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Gradient version with contrast hover */
+.custom-success-btn {
+  background: linear-gradient(135deg, #2d5a27 0%, #3a6b32 100%) !important;
+  border: 1px solid #2d5a27 !important;
+  color: white !important;
+  border-radius: 8px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  transition: all 0.3s ease !important;
+}
+
+.custom-success-btn:hover {
+  background: linear-gradient(135deg, #1a3d15 0%, #25521e 100%) !important;
+  border-color: #1a3d15 !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 12px rgba(26, 61, 21, 0.4) !important;
+}
+
+.custom-success-btn:active {
+  background: linear-gradient(135deg, #143010 0%, #1c4516 100%) !important;
+  border-color: #143010 !important;
+  transform: translateY(0) !important;
+  box-shadow: 0 2px 4px rgba(26, 61, 21, 0.4) !important;
+}
+
+:root {
+  --info-color: #17a2b8;
+  --warning-color: #ffc107;
+  --success-color: #198754;
+  --danger-color: #dc3545;
+  --primary-color: #336b31;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  opacity: 0.9;
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-view {
+  background-color: var(--info-color) !important;
+  border-color: var(--info-color) !important;
+  color: white !important;
+}
+
+.btn-approve {
+  background-color: var(--success-color) !important;
+  border-color: var(--success-color) !important;
+  color: white !important;
+}
+
+.btn-reject {
+  background-color: var(--danger-color) !important;
+  border-color: var(--danger-color) !important;
+  color: white !important;
+}
+

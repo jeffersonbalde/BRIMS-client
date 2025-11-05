@@ -1,6 +1,6 @@
 // pages/NotFound.jsx
 import React from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const NotFound = () => {
@@ -30,12 +30,11 @@ const NotFound = () => {
       <div className="container">
         <div className="row justify-content-center">
           <div className="col-md-6 col-lg-5 text-center">
-            
             {/* 404 Number */}
             <div className="mb-4">
-              <h1 
+              <h1
                 className="display-1 fw-bold mb-0"
-                style={{ color: 'var(--primary-color)' }}
+                style={{ color: "var(--primary-color)" }}
               >
                 404
               </h1>
@@ -43,24 +42,22 @@ const NotFound = () => {
 
             {/* Content */}
             <div className="mb-4">
-              <h2 
+              <h2
                 className="h3 fw-bold mb-3"
-                style={{ color: 'var(--text-primary)' }}
+                style={{ color: "var(--text-primary)" }}
               >
                 Page Not Found
               </h2>
-              
-              <p 
-                className="mb-3"
-                style={{ color: 'var(--text-secondary)' }}
-              >
+
+              <p className="mb-3" style={{ color: "var(--text-secondary)" }}>
                 The page you're looking for doesn't exist or has been moved.
               </p>
-              
-              <p 
-                className="small text-muted mb-0"
-              >
-                Attempted URL: <code className="bg-white px-2 py-1 rounded border">{location.pathname}</code>
+
+              <p className="small text-muted mb-0">
+                Attempted URL:{" "}
+                <code className="bg-white px-2 py-1 rounded border">
+                  {location.pathname}
+                </code>
               </p>
             </div>
 
@@ -70,14 +67,14 @@ const NotFound = () => {
                 onClick={handleGoBack}
                 className="btn btn-primary px-4"
                 style={{
-                  backgroundColor: 'var(--btn-primary-bg)',
-                  borderColor: 'var(--btn-primary-bg)'
+                  backgroundColor: "var(--btn-primary-bg)",
+                  borderColor: "var(--btn-primary-bg)",
                 }}
               >
                 <i className="fas fa-arrow-left me-2"></i>
                 Go Back
               </button>
-              
+
               <button
                 onClick={handleGoHome}
                 className="btn btn-outline-secondary px-4"
