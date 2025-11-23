@@ -5,7 +5,6 @@ import { showAlert, showToast } from "../../../services/notificationService";
 import IncidentReportModal from "./IncidentReportModal";
 import IncidentViewModal from "./IncidentViewModal";
 import IncidentEditModal from "./IncidentEditModal";
-import PopulationDataModal from "../../admin_barangay/PopulationDataModal";
 import InfrastructureStatusModal from "../../admin_barangay/InfrastructureStatusModal";
 
 const IncidentList = () => {
@@ -34,7 +33,6 @@ const IncidentList = () => {
 
   const [viewMode, setViewMode] = useState("active"); // "active", "archived", "all"
 
-  const [showPopulationModal, setShowPopulationModal] = useState(false);
   const [showInfrastructureModal, setShowInfrastructureModal] = useState(false);
 
   // Stats
@@ -62,7 +60,7 @@ const IncidentList = () => {
     filterStatus,
     sortField,
     sortDirection,
-    viewMode, // ADD THIS
+    viewMode,
   ]);
 
   useEffect(() => {
@@ -138,7 +136,6 @@ const IncidentList = () => {
     showToast.info("Data refreshed successfully");
   };
 
-  // Replace your filterAndSortIncidents function in IncidentList.jsx:
   const filterAndSortIncidents = () => {
     let filtered = [...incidents];
 
@@ -215,52 +212,29 @@ const IncidentList = () => {
     }
   };
 
-const handleAddPopulationData = async (incident) => {
-  if (actionLock) {
-    showToast.warning("Please wait until the current action completes");
-    return;
-  }
+  const handleAddInfrastructureData = async (incident) => {
+    if (actionLock) {
+      showToast.warning("Please wait until the current action completes");
+      return;
+    }
 
-  setActionLock(true);
-  setActionLoading(incident.id);
+    setActionLock(true);
+    setActionLoading(incident.id);
 
-  try {
-    // Show loading state immediately
-    setSelectedIncident(incident);
-    setShowPopulationModal(true);
-    
-    // The modal will handle fetching data internally
-  } catch (error) {
-    console.error("Error opening population modal:", error);
-    showToast.error("Failed to open population data form");
-  } finally {
-    setActionLoading(null);
-    setActionLock(false);
-  }
-};
-const handleAddInfrastructureData = async (incident) => {
-  if (actionLock) {
-    showToast.warning("Please wait until the current action completes");
-    return;
-  }
+    try {
+      // Show loading state immediately
+      setSelectedIncident(incident);
+      setShowInfrastructureModal(true);
 
-  setActionLock(true);
-  setActionLoading(incident.id);
-
-  try {
-    // Show loading state immediately
-    setSelectedIncident(incident);
-    setShowInfrastructureModal(true);
-    
-    // The modal will handle fetching data internally
-  } catch (error) {
-    console.error("Error opening infrastructure modal:", error);
-    showToast.error("Failed to open infrastructure status form");
-  } finally {
-    setActionLoading(null);
-    setActionLock(false);
-  }
-};
+      // The modal will handle fetching data internally
+    } catch (error) {
+      console.error("Error opening infrastructure modal:", error);
+      showToast.error("Failed to open infrastructure status form");
+    } finally {
+      setActionLoading(null);
+      setActionLock(false);
+    }
+  };
 
   const handleDelete = async (incidentId) => {
     if (actionLock) {
@@ -339,8 +313,6 @@ const handleAddInfrastructureData = async (incident) => {
     setSelectedIncident(incident);
     setShowEditModal(true);
   };
-
-  // components/incident/IncidentList.jsx - Update these functions:
 
   // Check if incident can be edited
   const canIncidentBeEdited = (incident) => {
@@ -441,7 +413,7 @@ const handleAddInfrastructureData = async (incident) => {
   const endIndex = startIndex + itemsPerPage;
   const currentIncidents = filteredIncidents.slice(startIndex, endIndex);
 
-  // Skeleton Loaders
+  // FIXED: Skeleton Loaders - Now with 10 columns to match the table header
   const TableRowSkeleton = () => (
     <tr className="align-middle">
       <td className="text-center">
@@ -452,11 +424,11 @@ const handleAddInfrastructureData = async (incident) => {
       </td>
       <td className="text-center">
         <div className="d-flex justify-content-center gap-1">
-          {[1, 2, 3].map((item) => (
+          {[1, 2, 3, 4].map((item) => (
             <div
               key={item}
               className="skeleton-box"
-              style={{ width: "30px", height: "30px" }}
+              style={{ width: "32px", height: "32px", borderRadius: "4px" }}
             ></div>
           ))}
         </div>
@@ -493,6 +465,17 @@ const handleAddInfrastructureData = async (incident) => {
         <div
           className="skeleton-line"
           style={{ width: "60%", margin: "0 auto" }}
+        ></div>
+      </td>
+      {/* FIXED: Added the missing 10th column for Incident Date */}
+      <td className="text-center">
+        <div
+          className="skeleton-line"
+          style={{ width: "70%", margin: "0 auto" }}
+        ></div>
+        <div
+          className="skeleton-line mt-1"
+          style={{ width: "50%", margin: "0 auto" }}
         ></div>
       </td>
     </tr>
@@ -563,8 +546,6 @@ const handleAddInfrastructureData = async (incident) => {
       return "Time Error";
     }
   };
-
-  // Add these functions after your existing helper functions:
 
   // Get button titles
   const getEditButtonTitle = (incident) => {
@@ -668,7 +649,7 @@ const handleAddInfrastructureData = async (incident) => {
   };
 
   return (
-    <div className="container-fluid px-1">
+    <div className="container-fluid px-1 fadeIn">
       {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div className="flex-grow-1">
@@ -1237,32 +1218,15 @@ const handleAddInfrastructureData = async (incident) => {
                     >
                       Actions
                     </th>
-                    <th style={{ width: "250px", fontSize: "0.875rem" }}>
-                      Incident Details
-                    </th>
-                    <th style={{ width: "120px", fontSize: "0.875rem" }}>
-                      Type
-                    </th>
-                    <th style={{ width: "100px", fontSize: "0.875rem" }}>
-                      Severity
-                    </th>
-                    <th style={{ width: "120px", fontSize: "0.875rem" }}>
-                      Status
-                    </th>
-                    <th style={{ width: "200px", fontSize: "0.875rem" }}>
-                      Location
-                    </th>
-                    <th
-                      className="text-center"
-                      style={{ width: "130px", fontSize: "0.875rem" }}
-                    >
+                    <th style={{ fontSize: "0.875rem" }}>Incident Details</th>
+                    <th style={{ fontSize: "0.875rem" }}>Type</th>
+                    <th style={{ fontSize: "0.875rem" }}>Severity</th>
+                    <th style={{ fontSize: "0.875rem" }}>Status</th>
+                    <th style={{ fontSize: "0.875rem" }}>Location</th>
+                    <th style={{ fontSize: "0.875rem" }}>Families</th>
+                    <th style={{ fontSize: "0.875rem" }}>Persons</th>
+                    <th className="text-center" style={{ fontSize: "0.9rem" }}>
                       Incident Date
-                    </th>
-                    <th
-                      className="text-center"
-                      style={{ width: "130px", fontSize: "0.875rem" }}
-                    >
-                      Reported
                     </th>
                   </tr>
                 </thead>
@@ -1355,112 +1319,18 @@ const handleAddInfrastructureData = async (incident) => {
                       >
                         Actions
                       </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("title")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Incident Details
-                            <i className={`ms-1 ${getSortIcon("title")}`}></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("incident_type")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Type
-                            <i
-                              className={`ms-1 ${getSortIcon("incident_type")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("severity")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Severity
-                            <i
-                              className={`ms-1 ${getSortIcon("severity")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("status")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Status
-                            <i className={`ms-1 ${getSortIcon("status")}`}></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("location")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Location
-                            <i
-                              className={`ms-1 ${getSortIcon("location")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
+                      <th style={{ fontSize: "0.875rem" }}>Incident Details</th>
+                      <th style={{ fontSize: "0.875rem" }}>Type</th>
+                      <th style={{ fontSize: "0.875rem" }}>Severity</th>
+                      <th style={{ fontSize: "0.875rem" }}>Status</th>
+                      <th style={{ fontSize: "0.875rem" }}>Location</th>
+                      <th style={{ fontSize: "0.875rem" }}>Families</th>
+                      <th style={{ fontSize: "0.875rem" }}>Persons</th>
                       <th
                         className="text-center"
                         style={{ fontSize: "0.9rem" }}
                       >
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold"
-                          onClick={() => handleSort("incident_date")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.9rem" }}
-                        >
-                          <span className="d-flex align-items-center">
-                            Incident Date
-                            <i
-                              className={`ms-1 ${getSortIcon("incident_date")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th
-                        className="text-center"
-                        style={{ fontSize: "0.9rem" }}
-                      >
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold"
-                          onClick={() => handleSort("created_at")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.9rem" }}
-                        >
-                          <span className="d-flex align-items-center">
-                            Reported
-                            <i
-                              className={`ms-1 ${getSortIcon("created_at")}`}
-                            ></i>
-                          </span>
-                        </button>
+                        Incident Date
                       </th>
                     </tr>
                   </thead>
@@ -1486,40 +1356,6 @@ const handleAddInfrastructureData = async (incident) => {
                               onClick={() => handleView(incident)}
                               disabled={isActionDisabled(incident.id)}
                               title="View Details"
-                            >
-                              {actionLoading === incident.id ? (
-                                <span
-                                  className="spinner-border spinner-border-sm"
-                                  role="status"
-                                ></span>
-                              ) : (
-                                <i className="fas fa-eye"></i>
-                              )}
-                            </button>
-
-                            {/* Edit Button */}
-                            <button
-                              className="btn action-btn btn-approve"
-                              onClick={() => handleEditWithAlert(incident)}
-                              disabled={isActionDisabled(incident.id)}
-                              title={getEditButtonTitle(incident)}
-                            >
-                              {actionLoading === incident.id ? (
-                                <span
-                                  className="spinner-border spinner-border-sm"
-                                  role="status"
-                                ></span>
-                              ) : (
-                                <i className="fas fa-edit"></i>
-                              )}
-                            </button>
-
-                            {/* UPDATED: Population Data Button - Matching existing pattern */}
-                            <button
-                              className="btn action-btn"
-                              onClick={() => handleAddPopulationData(incident)}
-                              disabled={isActionDisabled(incident.id)}
-                              title="Add Population Data"
                               style={{
                                 backgroundColor: "#17a2b8",
                                 borderColor: "#17a2b8",
@@ -1559,21 +1395,19 @@ const handleAddInfrastructureData = async (incident) => {
                                   role="status"
                                 ></span>
                               ) : (
-                                <i className="fas fa-users"></i>
+                                <i className="fas fa-eye"></i>
                               )}
                             </button>
 
-                            {/* UPDATED: Infrastructure Status Button - Matching existing pattern */}
+                            {/* Edit Button */}
                             <button
-                              className="btn action-btn"
-                              onClick={() =>
-                                handleAddInfrastructureData(incident)
-                              }
+                              className="btn action-btn btn-approve"
+                              onClick={() => handleEditWithAlert(incident)}
                               disabled={isActionDisabled(incident.id)}
-                              title="Add Infrastructure Status"
+                              title={getEditButtonTitle(incident)}
                               style={{
-                                backgroundColor: "#ffc107",
-                                borderColor: "#ffc107",
+                                backgroundColor: "#28a745",
+                                borderColor: "#28a745",
                                 color: "white",
                                 width: "32px",
                                 height: "32px",
@@ -1588,17 +1422,68 @@ const handleAddInfrastructureData = async (incident) => {
                               }}
                               onMouseEnter={(e) => {
                                 if (!isActionDisabled(incident.id)) {
-                                  e.target.style.backgroundColor = "#e0a800";
-                                  e.target.style.borderColor = "#e0a800";
+                                  e.target.style.backgroundColor = "#218838";
+                                  e.target.style.borderColor = "#218838";
                                   e.target.style.transform = "translateY(-1px)";
                                   e.target.style.boxShadow =
-                                    "0 2px 8px rgba(255, 193, 7, 0.3)";
+                                    "0 2px 8px rgba(40, 167, 69, 0.3)";
                                 }
                               }}
                               onMouseLeave={(e) => {
                                 if (!isActionDisabled(incident.id)) {
-                                  e.target.style.backgroundColor = "#ffc107";
-                                  e.target.style.borderColor = "#ffc107";
+                                  e.target.style.backgroundColor = "#28a745";
+                                  e.target.style.borderColor = "#28a745";
+                                  e.target.style.transform = "translateY(0)";
+                                  e.target.style.boxShadow = "none";
+                                }
+                              }}
+                            >
+                              {actionLoading === incident.id ? (
+                                <span
+                                  className="spinner-border spinner-border-sm"
+                                  role="status"
+                                ></span>
+                              ) : (
+                                <i className="fas fa-edit"></i>
+                              )}
+                            </button>
+
+                            {/* Infrastructure Status Button */}
+                            <button
+                              className="btn action-btn"
+                              onClick={() =>
+                                handleAddInfrastructureData(incident)
+                              }
+                              disabled={isActionDisabled(incident.id)}
+                              title="Add Infrastructure Status"
+                              style={{
+                                backgroundColor: "#fd7e14",
+                                borderColor: "#fd7e14",
+                                color: "white",
+                                width: "32px",
+                                height: "32px",
+                                borderRadius: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "0.875rem",
+                                padding: "0",
+                                border: "1px solid",
+                                transition: "all 0.2s ease-in-out",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isActionDisabled(incident.id)) {
+                                  e.target.style.backgroundColor = "#e56a06";
+                                  e.target.style.borderColor = "#e56a06";
+                                  e.target.style.transform = "translateY(-1px)";
+                                  e.target.style.boxShadow =
+                                    "0 2px 8px rgba(253, 126, 20, 0.3)";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isActionDisabled(incident.id)) {
+                                  e.target.style.backgroundColor = "#fd7e14";
+                                  e.target.style.borderColor = "#fd7e14";
                                   e.target.style.transform = "translateY(0)";
                                   e.target.style.boxShadow = "none";
                                 }
@@ -1620,6 +1505,38 @@ const handleAddInfrastructureData = async (incident) => {
                               onClick={() => handleDeleteWithAlert(incident)}
                               disabled={isActionDisabled(incident.id)}
                               title={getDeleteButtonTitle(incident)}
+                              style={{
+                                backgroundColor: "#dc3545",
+                                borderColor: "#dc3545",
+                                color: "white",
+                                width: "32px",
+                                height: "32px",
+                                borderRadius: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "0.875rem",
+                                padding: "0",
+                                border: "1px solid",
+                                transition: "all 0.2s ease-in-out",
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isActionDisabled(incident.id)) {
+                                  e.target.style.backgroundColor = "#c82333";
+                                  e.target.style.borderColor = "#c82333";
+                                  e.target.style.transform = "translateY(-1px)";
+                                  e.target.style.boxShadow =
+                                    "0 2px 8px rgba(220, 53, 69, 0.3)";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isActionDisabled(incident.id)) {
+                                  e.target.style.backgroundColor = "#dc3545";
+                                  e.target.style.borderColor = "#dc3545";
+                                  e.target.style.transform = "translateY(0)";
+                                  e.target.style.boxShadow = "none";
+                                }
+                              }}
                             >
                               {actionLoading === incident.id ? (
                                 <span
@@ -1633,7 +1550,7 @@ const handleAddInfrastructureData = async (incident) => {
                           </div>
                         </td>
 
-{/* Incident Details - Clean version without badges */}
+{/* Incident Details */}
 <td style={{ maxWidth: "250px", minWidth: "250px" }}>
   <div className="d-flex align-items-center">
     <div className="position-relative me-3 flex-shrink-0">
@@ -1642,25 +1559,20 @@ const handleAddInfrastructureData = async (incident) => {
         style={{ width: "40px", height: "40px" }}
       >
         <i
-          className={`fas ${getTypeIcon(
-            incident.incident_type
-          )} text-white`}
+          className={`fas ${getTypeIcon(incident.incident_type)} text-white`}
         ></i>
       </div>
     </div>
     <div className="flex-grow-1 min-w-0">
-      {/* Title */}
-      <div
-        className="fw-semibold text-dark text-truncate"
+      <div 
+        className="fw-semibold text-dark text-truncate" 
         style={{ fontSize: "0.9rem", lineHeight: "1.3" }}
         title={incident.title}
       >
         {incident.title}
       </div>
-      
-      {/* Description */}
-      <small
-        className="text-muted d-block text-truncate"
+      <small 
+        className="text-muted text-truncate d-block" 
         style={{ fontSize: "0.8rem", lineHeight: "1.3" }}
         title={incident.description || "No description"}
       >
@@ -1674,7 +1586,7 @@ const handleAddInfrastructureData = async (incident) => {
   </div>
 </td>
 
-                        {/* Type - Fixed width */}
+                        {/* Type */}
                         <td style={{ width: "120px" }}>
                           <span
                             className="badge bg-light text-dark border"
@@ -1689,7 +1601,7 @@ const handleAddInfrastructureData = async (incident) => {
                           </span>
                         </td>
 
-                        {/* Severity - Fixed width */}
+                        {/* Severity */}
                         <td style={{ width: "100px" }}>
                           <span
                             className={`badge ${getSeverityBadge(
@@ -1701,7 +1613,7 @@ const handleAddInfrastructureData = async (incident) => {
                           </span>
                         </td>
 
-                        {/* Status - Fixed width */}
+                        {/* Status */}
                         <td style={{ width: "120px" }}>
                           <span
                             className={`badge ${getStatusBadge(
@@ -1713,18 +1625,38 @@ const handleAddInfrastructureData = async (incident) => {
                           </span>
                         </td>
 
-                        {/* Location - Fixed width with truncation */}
-                        <td style={{ maxWidth: "200px", minWidth: "200px" }}>
-                          <div
-                            className="fw-semibold text-dark text-truncate"
-                            style={{ fontSize: "0.9rem" }}
-                            title={incident.location} // Tooltip for full location
-                          >
-                            {incident.location}
+{/* Location */}
+<td style={{ maxWidth: "200px", minWidth: "200px" }}>
+  <div 
+    className="fw-semibold text-dark text-truncate" 
+    style={{ fontSize: "0.9rem" }}
+    title={incident.location}
+  >
+    {incident.location}
+  </div>
+</td>
+
+                        {/* Families Count */}
+                        <td style={{ width: "80px" }}>
+                          <div className="text-center">
+                            <div className="fw-semibold text-primary">
+                              {incident.affected_families}
+                            </div>
+                            <small className="text-muted">families</small>
                           </div>
                         </td>
 
-                        {/* Incident Date - Fixed width */}
+                        {/* Persons Count */}
+                        <td style={{ width: "80px" }}>
+                          <div className="text-center">
+                            <div className="fw-semibold text-info">
+                              {incident.affected_individuals}
+                            </div>
+                            <small className="text-muted">persons</small>
+                          </div>
+                        </td>
+
+                        {/* Incident Date */}
                         <td className="text-center" style={{ width: "130px" }}>
                           <div
                             className="fw-semibold text-dark"
@@ -1737,22 +1669,6 @@ const handleAddInfrastructureData = async (incident) => {
                             style={{ fontSize: "0.8rem" }}
                           >
                             {formatLocalTime(incident.incident_date)}
-                          </div>
-                        </td>
-
-                        {/* Reported - Fixed width */}
-                        <td className="text-center" style={{ width: "130px" }}>
-                          <div
-                            className="fw-semibold text-dark"
-                            style={{ fontSize: "0.85rem" }}
-                          >
-                            {formatLocalDate(incident.created_at)}
-                          </div>
-                          <div
-                            className="text-muted"
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            {formatLocalTime(incident.created_at)}
                           </div>
                         </td>
                       </tr>
@@ -1928,23 +1844,6 @@ const handleAddInfrastructureData = async (incident) => {
             setSelectedIncident(null);
           }}
           onSuccess={handleEditSuccess}
-        />
-      )}
-
-      {/* Add to your existing modals section */}
-      {showPopulationModal && selectedIncident && (
-        <PopulationDataModal
-          incident={selectedIncident}
-          onClose={() => {
-            setShowPopulationModal(false);
-            setSelectedIncident(null);
-          }}
-          onSuccess={() => {
-            setShowPopulationModal(false);
-            setSelectedIncident(null);
-            showToast.success("Population data saved successfully!");
-            refreshAllData(); // Refresh to show updated data
-          }}
         />
       )}
 

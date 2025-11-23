@@ -587,7 +587,7 @@ const BarangaySettings = () => {
   };
 
   return (
-    <div className="container-fluid px-1 py-3">
+    <div className="container-fluid px-1 py-3 fadeIn">
       {/* Header - MATCHING OLD STYLING */}
       <div className="text-center mb-4">
         <div className="d-flex justify-content-center align-items-center mb-3">

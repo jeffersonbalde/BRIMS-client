@@ -19,37 +19,181 @@ const AffectedPopulation = () => {
     fetchAffectedPopulation();
   }, []);
 
-  const fetchAffectedPopulation = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_LARAVEL_API}/population/affected`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setAffectedData(data.data);
-        } else {
-          throw new Error(data.message);
-        }
-      } else {
-        throw new Error('Failed to fetch affected population data');
+const fetchAffectedPopulation = async () => {
+  try {
+    setLoading(true);
+    console.log('Fetching incidents data...');
+    
+    // Use your existing incidents endpoint
+    const response = await fetch(
+      `${import.meta.env.VITE_LARAVEL_API}/incidents`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       }
-    } catch (error) {
-      console.error('Error fetching affected population:', error);
-      showToast.error('Failed to load affected population data');
-      setAffectedData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
 
+    console.log('Response status:', response.status);
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('API Response:', data);
+      
+      if (data.success && data.incidents) {
+        // Transform the incidents data to match our structure
+        const transformedData = await Promise.all(
+          data.incidents.map(async (incident) => {
+            try {
+              // For each incident, fetch the detailed data with families
+              const detailResponse = await fetch(
+                `${import.meta.env.VITE_LARAVEL_API}/incidents/${incident.id}/with-families`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
+
+              if (detailResponse.ok) {
+                const detailData = await detailResponse.json();
+                if (detailData.success) {
+                  const detailedIncident = detailData.incident;
+                  const members = detailedIncident.families?.flatMap(family => family.members || []) || [];
+                  
+                  // Calculate population data based on Excel structure
+                  const populationData = {
+                    // Population Affected
+                    no_of_families: detailedIncident.families?.length || 0,
+                    no_of_persons: members.length,
+                    displaced_families: detailedIncident.families?.filter(f => f.evacuation_center).length || 0,
+                    displaced_persons: members.filter(m => m.displaced === 'Y').length,
+                    families_requiring_assistance: detailedIncident.families?.filter(f => f.assistance_given).length || 0,
+                    families_assisted: detailedIncident.families?.filter(f => f.assistance_given).length || 0,
+                    percentage_families_assisted: detailedIncident.families?.length > 0 ? 
+                      Math.round((detailedIncident.families.filter(f => f.assistance_given).length / detailedIncident.families.length) * 100) : 0,
+
+                    // Gender Distribution
+                    male_count: members.filter(m => m.sex_gender_identity === 'Male').length,
+                    female_count: members.filter(m => m.sex_gender_identity === 'Female').length,
+                    lgbtqia_count: members.filter(m => m.sex_gender_identity === 'LGBTQIA+ / Other (self-identified)').length,
+
+                    // Vulnerable Groups
+                    pwd_count: members.filter(m => m.vulnerable_groups?.includes('PWD')).length,
+                    pregnant_count: members.filter(m => m.vulnerable_groups?.includes('Pregnant')).length,
+                    elderly_count: members.filter(m => m.vulnerable_groups?.includes('Elderly')).length,
+                    lactating_mother_count: members.filter(m => m.vulnerable_groups?.includes('Lactating Mother')).length,
+                    solo_parent_count: members.filter(m => m.vulnerable_groups?.includes('Solo parent')).length,
+                    indigenous_people_count: members.filter(m => m.vulnerable_groups?.includes('Indigenous People')).length,
+                    lgbtqia_persons_count: members.filter(m => m.vulnerable_groups?.includes('LGBTQIA+ Persons')).length,
+                    child_headed_household_count: members.filter(m => m.vulnerable_groups?.includes('Child-Headed Household')).length,
+                    gbv_victim_count: members.filter(m => m.vulnerable_groups?.includes('Victim of Gender-Based Violence (GBV)')).length,
+                    four_ps_beneficiaries_count: members.filter(m => m.vulnerable_groups?.includes('4Ps Beneficiaries')).length,
+                    single_headed_family_count: members.filter(m => m.vulnerable_groups?.includes('Single Headed Family')).length,
+
+                    // Casualties
+                    dead_count: members.filter(m => m.casualty === 'Dead').length,
+                    injured_count: members.filter(m => m.casualty === 'Injured/ill').length,
+                    missing_count: members.filter(m => m.casualty === 'Missing').length,
+                  };
+
+                  return {
+                    incident: {
+                      id: detailedIncident.id,
+                      title: detailedIncident.title,
+                      type: detailedIncident.incident_type,
+                      location: detailedIncident.location,
+                      date: detailedIncident.incident_date,
+                      created_at: detailedIncident.created_at,
+                      barangay: detailedIncident.barangay,
+                      severity: detailedIncident.severity,
+                      status: detailedIncident.status
+                    },
+                    population_data: populationData,
+                    families: detailedIncident.families || []
+                  };
+                }
+              }
+
+              // Fallback: create basic structure from main incident data
+              return {
+                incident: {
+                  id: incident.id,
+                  title: incident.title,
+                  type: incident.incident_type,
+                  location: incident.location,
+                  date: incident.incident_date,
+                  created_at: incident.created_at,
+                  barangay: incident.barangay,
+                  severity: incident.severity,
+                  status: incident.status
+                },
+                population_data: {
+                  no_of_families: incident.affected_families || 0,
+                  no_of_persons: incident.affected_individuals || 0,
+                  displaced_families: 0,
+                  displaced_persons: 0,
+                  families_requiring_assistance: 0,
+                  families_assisted: 0,
+                  percentage_families_assisted: 0,
+                  male_count: 0,
+                  female_count: 0,
+                  lgbtqia_count: 0,
+                },
+                families: []
+              };
+            } catch (error) {
+              console.error(`Error fetching details for incident ${incident.id}:`, error);
+              // Return basic incident data if detail fetch fails
+              return {
+                incident: {
+                  id: incident.id,
+                  title: incident.title,
+                  type: incident.incident_type,
+                  location: incident.location,
+                  date: incident.incident_date,
+                  created_at: incident.created_at,
+                  barangay: incident.barangay,
+                  severity: incident.severity,
+                  status: incident.status
+                },
+                population_data: {
+                  no_of_families: incident.affected_families || 0,
+                  no_of_persons: incident.affected_individuals || 0,
+                  displaced_families: 0,
+                  displaced_persons: 0,
+                  families_requiring_assistance: 0,
+                  families_assisted: 0,
+                  percentage_families_assisted: 0,
+                  male_count: 0,
+                  female_count: 0,
+                  lgbtqia_count: 0,
+                },
+                families: []
+              };
+            }
+          })
+        );
+
+        console.log('Final transformed data:', transformedData);
+        setAffectedData(transformedData);
+      } else {
+        throw new Error(data.message || 'No incidents data found');
+      }
+    } else {
+      const errorText = await response.text();
+      console.error('API response not OK:', response.status, errorText);
+      throw new Error(`HTTP ${response.status}: Failed to fetch incidents`);
+    }
+  } catch (error) {
+    console.error('Error fetching affected population:', error);
+    showToast.error('Failed to load affected population data');
+    setAffectedData([]);
+  } finally {
+    setLoading(false);
+  }
+};
   // Filter and sort data
   const filterAndSortData = () => {
     let filtered = [...affectedData];
@@ -157,7 +301,24 @@ const AffectedPopulation = () => {
     return typeIcons[type] || "fa-exclamation-triangle";
   };
 
-  // Skeleton Loaders
+  // Calculate stats based on Excel structure
+  const calculateStats = () => {
+    const totalIncidents = affectedData.length;
+    const totalAffected = affectedData.reduce((sum, item) => sum + (item.population_data?.no_of_persons || 0), 0);
+    const totalFamilies = affectedData.reduce((sum, item) => sum + (item.population_data?.no_of_families || 0), 0);
+    const totalFamiliesAssisted = affectedData.reduce((sum, item) => sum + (item.population_data?.families_assisted || 0), 0);
+
+    return {
+      totalIncidents,
+      totalAffected,
+      totalFamilies,
+      totalFamiliesAssisted
+    };
+  };
+
+  const stats = calculateStats();
+
+  // Skeleton Loaders (keep your existing skeleton code)
   const StatsCardSkeleton = () => (
     <div className="col-6 col-md-3">
       <div className="card border-left-primary shadow-sm h-100">
@@ -221,25 +382,8 @@ const AffectedPopulation = () => {
     return actionLock;
   };
 
-  // Calculate stats
-  const calculateStats = () => {
-    const totalAffected = affectedData.reduce((sum, item) => sum + (item.population_data?.displaced_persons || 0), 0);
-    const totalFamiliesNeedingHelp = affectedData.reduce((sum, item) => sum + (item.population_data?.families_requiring_assistance || 0), 0);
-    const totalFamiliesAssisted = affectedData.reduce((sum, item) => sum + (item.population_data?.families_assisted || 0), 0);
-    const totalIncidents = affectedData.length;
-
-    return {
-      totalAffected,
-      totalFamiliesNeedingHelp,
-      totalFamiliesAssisted,
-      totalIncidents
-    };
-  };
-
-  const stats = calculateStats();
-
   return (
-    <div className="container-fluid px-1">
+    <div className="container-fluid px-1 fadeIn">
       {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div className="flex-grow-1">
@@ -276,7 +420,7 @@ const AffectedPopulation = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Updated to match Excel structure */}
       <div className="row mb-4 g-3">
         {loading ? (
           <>
@@ -330,14 +474,14 @@ const AffectedPopulation = () => {
                   <div className="d-flex align-items-center">
                     <div className="flex-grow-1">
                       <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "#ffc107" }}>
-                        Need Assistance
+                        Total Families
                       </div>
                       <div className="h4 mb-0 fw-bold" style={{ color: "#ffc107" }}>
-                        {stats.totalFamiliesNeedingHelp}
+                        {stats.totalFamilies}
                       </div>
                     </div>
                     <div className="col-auto">
-                      <i className="fas fa-hands-helping fa-lg" style={{ color: "#ffc107", opacity: 0.7 }}></i>
+                      <i className="fas fa-home fa-lg" style={{ color: "#ffc107", opacity: 0.7 }}></i>
                     </div>
                   </div>
                 </div>
@@ -349,7 +493,7 @@ const AffectedPopulation = () => {
                   <div className="d-flex align-items-center">
                     <div className="flex-grow-1">
                       <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "#198754" }}>
-                        Assisted
+                        Families Assisted
                       </div>
                       <div className="h4 mb-0 fw-bold" style={{ color: "#198754" }}>
                         {stats.totalFamiliesAssisted}
@@ -366,6 +510,7 @@ const AffectedPopulation = () => {
         )}
       </div>
 
+      {/* Rest of your existing JSX for search, filter, and data display */}
       {/* Search and Filter Controls */}
       <div className="card shadow border-0 mb-4">
         <div className="card-body p-3">
@@ -533,7 +678,7 @@ const AffectedPopulation = () => {
               )}
             </div>
           ) : (
-            // Loaded state with data
+            // Loaded state with data - Updated to show Excel-based data
             <>
               <div className="row">
                 {currentData.map((item, index) => (
@@ -558,17 +703,17 @@ const AffectedPopulation = () => {
                           <div className="col-4">
                             <div className="border-end">
                               <div className="h5 text-primary mb-1">
-                                {item.population_data?.displaced_persons || 0}
+                                {item.population_data?.no_of_persons || 0}
                               </div>
-                              <small className="text-muted">Affected</small>
+                              <small className="text-muted">Persons</small>
                             </div>
                           </div>
                           <div className="col-4">
                             <div className="border-end">
                               <div className="h5 text-warning mb-1">
-                                {item.population_data?.families_requiring_assistance || 0}
+                                {item.population_data?.no_of_families || 0}
                               </div>
-                              <small className="text-muted">Need Help</small>
+                              <small className="text-muted">Families</small>
                             </div>
                           </div>
                           <div className="col-4">
@@ -590,7 +735,7 @@ const AffectedPopulation = () => {
                           </small>
                           <small className="text-muted d-block">
                             <i className="fas fa-heart me-1"></i>
-                            PWD: {item.population_data?.pwd_count || 0}
+                            Displaced: {item.population_data?.displaced_persons || 0}
                           </small>
                         </div>
                       </div>
@@ -599,13 +744,17 @@ const AffectedPopulation = () => {
                           <i className="fas fa-map-marker-alt me-1"></i>
                           {item.incident?.location || 'No location specified'}
                         </small>
+                        <small className="text-muted">
+                          <i className="fas fa-percentage me-1"></i>
+                          Assistance: {item.population_data?.percentage_families_assisted || 0}%
+                        </small>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Pagination */}
+              {/* Pagination - Keep your existing pagination code */}
               {totalPages > 1 && (
                 <div className="card-footer bg-white border-top-0 py-3">
                   <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">

@@ -8,6 +8,7 @@ import ArchiveModal from "./ArchiveModal";
 import UnarchiveModal from "./UnarchiveModal";
 import PopulationDataModal from "../../admin_barangay/PopulationDataModal";
 import InfrastructureStatusModal from "../../admin_barangay/InfrastructureStatusModal";
+import AdminIncidentEditModal from "./AdminIncidentEditModal";
 
 const AdminIncidentManagement = () => {
   const { user, token } = useAuth();
@@ -41,6 +42,8 @@ const AdminIncidentManagement = () => {
 
   const [showPopulationModal, setShowPopulationModal] = useState(false);
   const [showInfrastructureModal, setShowInfrastructureModal] = useState(false);
+
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Stats
   const [stats, setStats] = useState({
@@ -84,48 +87,60 @@ const AdminIncidentManagement = () => {
   }, [viewMode, filterStatus]);
 
   // Add these functions near your other handler functions
-const handleAddPopulationData = async (incident) => {
-  if (actionLock) {
-    showToast.warning("Please wait until the current action completes");
-    return;
-  }
+  const handleAddPopulationData = async (incident) => {
+    if (actionLock) {
+      showToast.warning("Please wait until the current action completes");
+      return;
+    }
 
-  setActionLock(true);
-  setActionLoading(incident.id);
+    setActionLock(true);
+    setActionLoading(incident.id);
 
-  try {
-    // Show loading state immediately
+    try {
+      // Show loading state immediately
+      setSelectedIncident(incident);
+      setShowPopulationModal(true);
+    } catch (error) {
+      console.error("Error opening population modal:", error);
+      showToast.error("Failed to open population data form");
+    } finally {
+      setActionLoading(null);
+      setActionLock(false);
+    }
+  };
+
+  const handleEditIncident = (incident) => {
+    if (actionLock) {
+      showToast.warning("Please wait until the current action completes");
+      return;
+    }
+
+    // For admin, they can always edit any incident
     setSelectedIncident(incident);
-    setShowPopulationModal(true);
-  } catch (error) {
-    console.error("Error opening population modal:", error);
-    showToast.error("Failed to open population data form");
-  } finally {
-    setActionLoading(null);
-    setActionLock(false);
-  }
-};
-const handleAddInfrastructureData = async (incident) => {
-  if (actionLock) {
-    showToast.warning("Please wait until the current action completes");
-    return;
-  }
+    setShowEditModal(true);
+  };
 
-  setActionLock(true);
-  setActionLoading(incident.id);
+  const handleAddInfrastructureData = async (incident) => {
+    if (actionLock) {
+      showToast.warning("Please wait until the current action completes");
+      return;
+    }
 
-  try {
-    // Show loading state immediately
-    setSelectedIncident(incident);
-    setShowInfrastructureModal(true);
-  } catch (error) {
-    console.error("Error opening infrastructure modal:", error);
-    showToast.error("Failed to open infrastructure status form");
-  } finally {
-    setActionLoading(null);
-    setActionLock(false);
-  }
-};
+    setActionLock(true);
+    setActionLoading(incident.id);
+
+    try {
+      // Show loading state immediately
+      setSelectedIncident(incident);
+      setShowInfrastructureModal(true);
+    } catch (error) {
+      console.error("Error opening infrastructure modal:", error);
+      showToast.error("Failed to open infrastructure status form");
+    } finally {
+      setActionLoading(null);
+      setActionLock(false);
+    }
+  };
 
   const fetchIncidents = async () => {
     setLoading(true);
@@ -142,6 +157,7 @@ const handleAddInfrastructureData = async (incident) => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log("Fetched incidents with families:", data.incidents); // Debug log
         setIncidents(data.incidents || []);
       } else {
         throw new Error("Failed to fetch incidents");
@@ -206,8 +222,6 @@ const handleAddInfrastructureData = async (incident) => {
     setActionLoading(incidentId);
 
     try {
-
-
       const response = await fetch(
         `${
           import.meta.env.VITE_LARAVEL_API
@@ -314,43 +328,41 @@ const handleAddInfrastructureData = async (incident) => {
   const filterAndSortIncidents = () => {
     let filtered = [...incidents];
 
-
-
-// When opening PopulationDataModal
-const handleAddPopulationData = async (incident) => {
-  try {
-    // Fetch existing data if any
-    const response = await fetch(`/api/incidents/${incident.id}/population-data`);
-    if (response.ok) {
-      const { data } = await response.json();
-      if (data) {
-        // Pre-fill form with existing data
-        setFormData(data);
-        setIsEditing(true);
+    // When opening PopulationDataModal
+    const handleAddPopulationData = async (incident) => {
+      try {
+        // Fetch existing data if any
+        const response = await fetch(
+          `/api/incidents/${incident.id}/population-data`
+        );
+        if (response.ok) {
+          const { data } = await response.json();
+          if (data) {
+            // Pre-fill form with existing data
+            setFormData(data);
+            setIsEditing(true);
+          }
+        }
+        setShowPopulationModal(true);
+      } catch (error) {
+        showToast.error("Failed to load population data");
       }
-    }
-    setShowPopulationModal(true);
-  } catch (error) {
-    showToast.error('Failed to load population data');
-  }
-};
+    };
 
-const handleAddInfrastructureData = (incident) => {
-  if (actionLock) {
-    showToast.warning("Please wait until the current action completes");
-    return;
-  }
-  setSelectedIncident(incident);
-  setShowInfrastructureModal(true);
-};
+    const handleAddInfrastructureData = (incident) => {
+      if (actionLock) {
+        showToast.warning("Please wait until the current action completes");
+        return;
+      }
+      setSelectedIncident(incident);
+      setShowInfrastructureModal(true);
+    };
 
     // View mode filter - FIXED
     if (viewMode === "active") {
       filtered = filtered.filter((incident) => incident.status !== "Archived");
-
     } else if (viewMode === "archived") {
       filtered = filtered.filter((incident) => incident.status === "Archived");
-
     }
     // "all" shows everything - no filter needed
 
@@ -421,7 +433,6 @@ const handleAddInfrastructureData = (incident) => {
       if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
-
 
     setFilteredIncidents(filtered);
     setCurrentPage(1);
@@ -598,7 +609,6 @@ const handleAddInfrastructureData = (incident) => {
   const endIndex = startIndex + itemsPerPage;
   const currentIncidents = filteredIncidents.slice(startIndex, endIndex);
 
-  // Skeleton Loaders - CORRECTED VERSION (NO incident references)
   const TableRowSkeleton = () => (
     <tr className="align-middle">
       <td className="text-center">
@@ -609,13 +619,17 @@ const handleAddInfrastructureData = (incident) => {
       </td>
       <td className="text-center">
         <div className="d-flex justify-content-center gap-1">
-          {[1, 2, 3].map((item) => (
-            <div
-              key={item}
-              className="skeleton-box"
-              style={{ width: "30px", height: "30px" }}
-            ></div>
-          ))}
+          {[1, 2, 3, 4, 5].map(
+            (
+              item // Increased from 3 to 5 for more action buttons
+            ) => (
+              <div
+                key={item}
+                className="skeleton-box"
+                style={{ width: "32px", height: "32px" }}
+              ></div>
+            )
+          )}
         </div>
       </td>
       <td>
@@ -643,16 +657,32 @@ const handleAddInfrastructureData = (incident) => {
       <td>
         <div className="skeleton-line" style={{ width: "70%" }}></div>
       </td>
+      {/* ADD THESE TWO NEW COLUMNS FOR FAMILIES AND PERSONS */}
       <td className="text-center">
         <div
+          className="skeleton-line mb-1"
+          style={{ width: "50%", margin: "0 auto" }}
+        ></div>
+        <div
           className="skeleton-line"
-          style={{ width: "80%", margin: "0 auto" }}
+          style={{ width: "30%", margin: "0 auto" }}
         ></div>
       </td>
       <td className="text-center">
         <div
+          className="skeleton-line mb-1"
+          style={{ width: "50%", margin: "0 auto" }}
+        ></div>
+        <div
           className="skeleton-line"
-          style={{ width: "60%", margin: "0 auto" }}
+          style={{ width: "30%", margin: "0 auto" }}
+        ></div>
+      </td>
+      {/* END OF NEW COLUMNS */}
+      <td className="text-center">
+        <div
+          className="skeleton-line"
+          style={{ width: "80%", margin: "0 auto" }}
         ></div>
       </td>
     </tr>
@@ -802,7 +832,7 @@ const handleAddInfrastructureData = (incident) => {
   };
 
   return (
-    <div className="container-fluid px-1">
+    <div className="container-fluid px-1 fadeIn">
       {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div className="flex-grow-1">
@@ -1400,7 +1430,7 @@ const handleAddInfrastructureData = (incident) => {
                     </th>
                     <th
                       className="text-center"
-                      style={{ width: "80px", fontSize: "0.875rem" }}
+                      style={{ width: "100px", fontSize: "0.875rem" }}
                     >
                       Actions
                     </th>
@@ -1408,7 +1438,7 @@ const handleAddInfrastructureData = (incident) => {
                       Incident Details
                     </th>
                     <th style={{ width: "150px", fontSize: "0.875rem" }}>
-                      Barangay & Reporter
+                      Barangay
                     </th>
                     <th style={{ width: "120px", fontSize: "0.875rem" }}>
                       Type
@@ -1422,17 +1452,17 @@ const handleAddInfrastructureData = (incident) => {
                     <th style={{ width: "200px", fontSize: "0.875rem" }}>
                       Location
                     </th>
-                    <th
-                      className="text-center"
-                      style={{ width: "130px", fontSize: "0.875rem" }}
-                    >
-                      Incident Date
+                    <th style={{ width: "80px", fontSize: "0.875rem" }}>
+                      Families
+                    </th>
+                    <th style={{ width: "80px", fontSize: "0.875rem" }}>
+                      Persons
                     </th>
                     <th
                       className="text-center"
                       style={{ width: "130px", fontSize: "0.875rem" }}
                     >
-                      Reported
+                      Incident Date
                     </th>
                   </tr>
                 </thead>
@@ -1510,448 +1540,486 @@ const handleAddInfrastructureData = (incident) => {
                       </th>
                       <th
                         className="text-center"
-                        style={{ width: "80px", fontSize: "0.875rem" }}
+                        style={{ width: "100px", fontSize: "0.875rem" }}
                       >
                         Actions
                       </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("title")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Incident Details
-                            <i className={`ms-1 ${getSortIcon("title")}`}></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("reporter.barangay_name")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Barangay & Reporter
-                            <i
-                              className={`ms-1 ${getSortIcon(
-                                "reporter.barangay_name"
-                              )}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("incident_type")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Type
-                            <i
-                              className={`ms-1 ${getSortIcon("incident_type")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("severity")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Severity
-                            <i
-                              className={`ms-1 ${getSortIcon("severity")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("status")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Status
-                            <i className={`ms-1 ${getSortIcon("status")}`}></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th style={{ fontSize: "0.875rem" }}>
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                          onClick={() => handleSort("location")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.875rem" }}
-                        >
-                          <span className="d-flex align-items-center justify-content-between">
-                            Location
-                            <i
-                              className={`ms-1 ${getSortIcon("location")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
+                      <th style={{ fontSize: "0.875rem" }}>Incident Details</th>
+                      <th style={{ fontSize: "0.875rem" }}>Barangay</th>
+                      <th style={{ fontSize: "0.875rem" }}>Type</th>
+                      <th style={{ fontSize: "0.875rem" }}>Severity</th>
+                      <th style={{ fontSize: "0.875rem" }}>Status</th>
+                      <th style={{ fontSize: "0.875rem" }}>Location</th>
+                      <th style={{ fontSize: "0.875rem" }}>Families</th>
+                      <th style={{ fontSize: "0.875rem" }}>Persons</th>
                       <th
                         className="text-center"
                         style={{ fontSize: "0.9rem" }}
                       >
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold"
-                          onClick={() => handleSort("incident_date")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.9rem" }}
-                        >
-                          <span className="d-flex align-items-center">
-                            Incident Date
-                            <i
-                              className={`ms-1 ${getSortIcon("incident_date")}`}
-                            ></i>
-                          </span>
-                        </button>
-                      </th>
-                      <th
-                        className="text-center"
-                        style={{ fontSize: "0.9rem" }}
-                      >
-                        <button
-                          className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold"
-                          onClick={() => handleSort("created_at")}
-                          disabled={isActionDisabled()}
-                          style={{ fontSize: "0.9rem" }}
-                        >
-                          <span className="d-flex align-items-center">
-                            Reported
-                            <i
-                              className={`ms-1 ${getSortIcon("created_at")}`}
-                            ></i>
-                          </span>
-                        </button>
+                        Incident Date
                       </th>
                     </tr>
                   </thead>
 
-                  <tbody>
-                    {currentIncidents.map((incident, index) => (
-                      <tr
-                        key={incident.id}
-                        className="align-middle"
-                        style={{ height: "70px" }}
-                      >
-                        <td
-                          className="text-center fw-bold text-muted"
-                          style={{ fontSize: "0.9rem" }}
-                        >
-                          {startIndex + index + 1}
-                        </td>
-
-<td className="text-center">
-  <div className="d-flex justify-content-center gap-1">
-    {/* Existing View Button */}
-    <button
-      className="btn action-btn btn-view"
-      onClick={() => handleViewDetails(incident)}
-      disabled={isActionDisabled(incident.id)}
-      title="View Details"
+<tbody>
+  {currentIncidents.map((incident, index) => (
+    <tr
+      key={incident.id}
+      className="align-middle"
+      style={{ height: "70px" }}
     >
-      {actionLoading === incident.id ? (
-        <span className="spinner-border spinner-border-sm" role="status"></span>
-      ) : (
-        <i className="fas fa-eye"></i>
-      )}
-    </button>
-
-    {/* Existing Status Update Button */}
-    <button
-      className="btn action-btn btn-approve"
-      onClick={() => handleStatusUpdateWithAlert(incident)}
-      disabled={isActionDisabled(incident.id)}
-      title="Update Status"
-    >
-      {actionLoading === incident.id ? (
-        <span className="spinner-border spinner-border-sm" role="status"></span>
-      ) : (
-        <i className="fas fa-edit"></i>
-      )}
-    </button>
-
-{/* UPDATED: Population Data Button - Matching existing pattern */}
-<button
-  className="btn action-btn"
-  onClick={() => handleAddPopulationData(incident)}
-  disabled={isActionDisabled(incident.id)}
-  title="Add Population Data"
-  style={{
-    backgroundColor: "#17a2b8",
-    borderColor: "#17a2b8",
-    color: "white",
-    width: "32px",
-    height: "32px",
-    borderRadius: "4px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "0.875rem",
-    padding: "0",
-    border: "1px solid",
-    transition: "all 0.2s ease-in-out"
-  }}
-  onMouseEnter={(e) => {
-    if (!isActionDisabled(incident.id)) {
-      e.target.style.backgroundColor = "#138496";
-      e.target.style.borderColor = "#138496";
-      e.target.style.transform = "translateY(-1px)";
-      e.target.style.boxShadow = "0 2px 8px rgba(23, 162, 184, 0.3)";
-    }
-  }}
-  onMouseLeave={(e) => {
-    if (!isActionDisabled(incident.id)) {
-      e.target.style.backgroundColor = "#17a2b8";
-      e.target.style.borderColor = "#17a2b8";
-      e.target.style.transform = "translateY(0)";
-      e.target.style.boxShadow = "none";
-    }
-  }}
->
-  {actionLoading === incident.id ? (
-    <span className="spinner-border spinner-border-sm" role="status"></span>
-  ) : (
-    <i className="fas fa-users"></i>
-  )}
-</button>
-
-{/* UPDATED: Infrastructure Status Button - Matching existing pattern */}
-<button
-  className="btn action-btn"
-  onClick={() => handleAddInfrastructureData(incident)}
-  disabled={isActionDisabled(incident.id)}
-  title="Add Infrastructure Status"
-  style={{
-    backgroundColor: "#ffc107",
-    borderColor: "#ffc107",
-    color: "white",
-    width: "32px",
-    height: "32px",
-    borderRadius: "4px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "0.875rem",
-    padding: "0",
-    border: "1px solid",
-    transition: "all 0.2s ease-in-out"
-  }}
-  onMouseEnter={(e) => {
-    if (!isActionDisabled(incident.id)) {
-      e.target.style.backgroundColor = "#e0a800";
-      e.target.style.borderColor = "#e0a800";
-      e.target.style.transform = "translateY(-1px)";
-      e.target.style.boxShadow = "0 2px 8px rgba(255, 193, 7, 0.3)";
-    }
-  }}
-  onMouseLeave={(e) => {
-    if (!isActionDisabled(incident.id)) {
-      e.target.style.backgroundColor = "#ffc107";
-      e.target.style.borderColor = "#ffc107";
-      e.target.style.transform = "translateY(0)";
-      e.target.style.boxShadow = "none";
-    }
-  }}
->
-  {actionLoading === incident.id ? (
-    <span className="spinner-border spinner-border-sm" role="status"></span>
-  ) : (
-    <i className="fas fa-road"></i>
-  )}
-</button>
-
-    {/* Archive Button - Only for non-archived incidents */}
-    {incident.status !== "Archived" && (
-      <button
-        className="btn action-btn btn-reject"
-        onClick={() => handleArchiveClick(incident)}
-        disabled={isActionDisabled(incident.id)}
-        title="Archive Incident"
+      <td
+        className="text-center fw-bold text-muted"
+        style={{ fontSize: "0.9rem" }}
       >
-        {actionLoading === incident.id ? (
-          <span className="spinner-border spinner-border-sm" role="status"></span>
-        ) : (
-          <i className="fas fa-archive"></i>
-        )}
-      </button>
-    )}
+        {startIndex + index + 1}
+      </td>
 
-    {/* Unarchive Button - Only for archived incidents */}
-    {incident.status === "Archived" && (
-      <button
-        className="btn action-btn btn-approve"
-        onClick={() => handleUnarchiveClick(incident)}
-        disabled={isActionDisabled(incident.id)}
-        title="Unarchive Incident"
-      >
-        {actionLoading === incident.id ? (
-          <span className="spinner-border spinner-border-sm" role="status"></span>
-        ) : (
-          <i className="fas fa-box-open"></i>
-        )}
-      </button>
-    )}
+      <td className="text-center">
+        <div className="d-flex justify-content-center gap-1">
+          {/* View Button */}
+          <button
+            className="btn action-btn btn-view"
+            onClick={() => handleViewDetails(incident)}
+            disabled={isActionDisabled(incident.id)}
+            title="View Details"
+            style={{
+              backgroundColor: "#17a2b8",
+              borderColor: "#17a2b8",
+              color: "white",
+              width: "32px",
+              height: "32px",
+              borderRadius: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.875rem",
+              padding: "0",
+              border: "1px solid",
+              transition: "all 0.2s ease-in-out",
+            }}
+            onMouseEnter={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#138496";
+                e.target.style.borderColor = "#138496";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow =
+                  "0 2px 8px rgba(23, 162, 184, 0.3)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#17a2b8";
+                e.target.style.borderColor = "#17a2b8";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "none";
+              }
+            }}
+          >
+            {actionLoading === incident.id ? (
+              <span
+                className="spinner-border spinner-border-sm"
+                role="status"
+              ></span>
+            ) : (
+              <i className="fas fa-eye"></i>
+            )}
+          </button>
+
+          {/* UPDATE STATUS BUTTON */}
+          <button
+            className="btn action-btn btn-approve"
+            onClick={() => handleStatusUpdateWithAlert(incident)}
+            disabled={isActionDisabled(incident.id)}
+            title="Update Status"
+            style={{
+              backgroundColor: "#28a745",
+              borderColor: "#28a745",
+              color: "white",
+              width: "32px",
+              height: "32px",
+              borderRadius: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.875rem",
+              padding: "0",
+              border: "1px solid",
+              transition: "all 0.2s ease-in-out",
+            }}
+            onMouseEnter={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#218838";
+                e.target.style.borderColor = "#218838";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow =
+                  "0 2px 8px rgba(40, 167, 69, 0.3)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#28a745";
+                e.target.style.borderColor = "#28a745";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "none";
+              }
+            }}
+          >
+            {actionLoading === incident.id ? (
+              <span
+                className="spinner-border spinner-border-sm"
+                role="status"
+              ></span>
+            ) : (
+              <i className="fas fa-edit"></i>
+            )}
+          </button>
+
+          {/* Edit Button */}
+          <button
+            className="btn action-btn"
+            onClick={() => handleEditIncident(incident)}
+            disabled={isActionDisabled(incident.id)}
+            title="Edit Incident Details"
+            style={{
+              backgroundColor: "#ffc107",
+              borderColor: "#ffc107",
+              color: "white",
+              width: "32px",
+              height: "32px",
+              borderRadius: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.875rem",
+              padding: "0",
+              border: "1px solid",
+              transition: "all 0.2s ease-in-out",
+            }}
+            onMouseEnter={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#e0a800";
+                e.target.style.borderColor = "#e0a800";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow =
+                  "0 2px 8px rgba(255, 193, 7, 0.3)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#ffc107";
+                e.target.style.borderColor = "#ffc107";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "none";
+              }
+            }}
+          >
+            {actionLoading === incident.id ? (
+              <span
+                className="spinner-border spinner-border-sm"
+                role="status"
+              ></span>
+            ) : (
+              <i className="fas fa-pencil-alt"></i>
+            )}
+          </button>
+
+          {/* Infrastructure Status Button */}
+          <button
+            className="btn action-btn"
+            onClick={() => handleAddInfrastructureData(incident)}
+            disabled={isActionDisabled(incident.id)}
+            title="Add Infrastructure Status"
+            style={{
+              backgroundColor: "#fd7e14",
+              borderColor: "#fd7e14",
+              color: "white",
+              width: "32px",
+              height: "32px",
+              borderRadius: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.875rem",
+              padding: "0",
+              border: "1px solid",
+              transition: "all 0.2s ease-in-out",
+            }}
+            onMouseEnter={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#e56a06";
+                e.target.style.borderColor = "#e56a06";
+                e.target.style.transform = "translateY(-1px)";
+                e.target.style.boxShadow =
+                  "0 2px 8px rgba(253, 126, 20, 0.3)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActionDisabled(incident.id)) {
+                e.target.style.backgroundColor = "#fd7e14";
+                e.target.style.borderColor = "#fd7e14";
+                e.target.style.transform = "translateY(0)";
+                e.target.style.boxShadow = "none";
+              }
+            }}
+          >
+            {actionLoading === incident.id ? (
+              <span
+                className="spinner-border spinner-border-sm"
+                role="status"
+              ></span>
+            ) : (
+              <i className="fas fa-road"></i>
+            )}
+          </button>
+
+          {/* Archive/Unarchive Button */}
+          {incident.status !== "Archived" ? (
+            <button
+              className="btn action-btn btn-reject"
+              onClick={() => handleArchiveClick(incident)}
+              disabled={isActionDisabled(incident.id)}
+              title="Archive Incident"
+              style={{
+                backgroundColor: "#dc3545",
+                borderColor: "#dc3545",
+                color: "white",
+                width: "32px",
+                height: "32px",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.875rem",
+                padding: "0",
+                border: "1px solid",
+                transition: "all 0.2s ease-in-out",
+              }}
+              onMouseEnter={(e) => {
+                if (!isActionDisabled(incident.id)) {
+                  e.target.style.backgroundColor = "#c82333";
+                  e.target.style.borderColor = "#c82333";
+                  e.target.style.transform = "translateY(-1px)";
+                  e.target.style.boxShadow =
+                    "0 2px 8px rgba(220, 53, 69, 0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActionDisabled(incident.id)) {
+                  e.target.style.backgroundColor = "#dc3545";
+                  e.target.style.borderColor = "#dc3545";
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "none";
+                }
+              }}
+            >
+              {actionLoading === incident.id ? (
+                <span
+                  className="spinner-border spinner-border-sm"
+                  role="status"
+                ></span>
+              ) : (
+                <i className="fas fa-archive"></i>
+              )}
+            </button>
+          ) : (
+            <button
+              className="btn action-btn btn-approve"
+              onClick={() => handleUnarchiveClick(incident)}
+              disabled={isActionDisabled(incident.id)}
+              title="Unarchive Incident"
+              style={{
+                backgroundColor: "#28a745",
+                borderColor: "#28a745",
+                color: "white",
+                width: "32px",
+                height: "32px",
+                borderRadius: "4px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.875rem",
+                padding: "0",
+                border: "1px solid",
+                transition: "all 0.2s ease-in-out",
+              }}
+              onMouseEnter={(e) => {
+                if (!isActionDisabled(incident.id)) {
+                  e.target.style.backgroundColor = "#218838";
+                  e.target.style.borderColor = "#218838";
+                  e.target.style.transform = "translateY(-1px)";
+                  e.target.style.boxShadow =
+                    "0 2px 8px rgba(40, 167, 69, 0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActionDisabled(incident.id)) {
+                  e.target.style.backgroundColor = "#28a745";
+                  e.target.style.borderColor = "#28a745";
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "none";
+                }
+              }}
+            >
+              {actionLoading === incident.id ? (
+                <span
+                  className="spinner-border spinner-border-sm"
+                  role="status"
+                ></span>
+              ) : (
+                <i className="fas fa-box-open"></i>
+              )}
+            </button>
+          )}
+        </div>
+      </td>
+
+      {/* Incident Details */}
+      <td style={{ maxWidth: "250px", minWidth: "250px" }}>
+        <div className="d-flex align-items-center">
+          <div className="position-relative me-3 flex-shrink-0">
+            <div
+              className="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center"
+              style={{ width: "40px", height: "40px" }}
+            >
+              <i
+                className={`fas ${getTypeIcon(
+                  incident.incident_type
+                )} text-white`}
+              ></i>
+            </div>
+          </div>
+          <div className="flex-grow-1 min-w-0">
+            <div
+              className="fw-semibold text-dark text-truncate"
+              style={{
+                fontSize: "0.9rem",
+                lineHeight: "1.3",
+              }}
+              title={incident.title}
+            >
+              {incident.title}
+            </div>
+            <small
+              className="text-muted d-block text-truncate"
+              style={{
+                fontSize: "0.8rem",
+                lineHeight: "1.3",
+              }}
+              title={incident.description || "No description"}
+            >
+              {incident.description
+                ? incident.description.length > 80
+                  ? `${incident.description.substring(0, 80)}...`
+                  : incident.description
+                : "No description"}
+            </small>
+          </div>
+        </div>
+      </td>
+
+{/* Barangay with tooltip */}
+<td className="column-barangay">
+  <div 
+    className="fw-semibold text-dark text-truncate" 
+    style={{ fontSize: "0.9rem" }}
+    title={incident.reporter?.barangay_name || "N/A"}
+  >
+    {incident.reporter?.barangay_name || "N/A"}
+  </div>
+  <small 
+    className="text-muted text-truncate d-block" 
+    style={{ fontSize: "0.8rem" }}
+    title={incident.reporter?.name || "N/A"}
+  >
+    {incident.reporter?.name || "N/A"}
+  </small>
+</td>
+
+      {/* Type */}
+      <td style={{ width: "120px" }}>
+        <span
+          className="badge bg-light text-dark border"
+          style={{ fontSize: "0.8rem" }}
+        >
+          <i
+            className={`fas ${getTypeIcon(
+              incident.incident_type
+            )} me-1`}
+          ></i>
+          {incident.incident_type}
+        </span>
+      </td>
+
+      {/* Severity */}
+      <td style={{ width: "100px" }}>
+        <span
+          className={`badge ${getSeverityBadge(incident.severity)}`}
+          style={{ fontSize: "0.8rem" }}
+        >
+          {incident.severity}
+        </span>
+      </td>
+
+      {/* Status */}
+      <td style={{ width: "120px" }}>
+        <span
+          className={`badge ${getStatusBadge(incident.status)}`}
+          style={{ fontSize: "0.8rem" }}
+        >
+          {incident.status}
+        </span>
+      </td>
+
+{/* Location */}
+<td className="column-location">
+  <div 
+    className="fw-semibold text-dark text-truncate" 
+    style={{ fontSize: "0.9rem" }}
+    title={incident.location}
+  >
+    {incident.location}
   </div>
 </td>
 
-{/* Incident Details - Clean version without badges */}
-<td style={{ maxWidth: "250px", minWidth: "250px" }}>
-  <div className="d-flex align-items-center">
-    <div className="position-relative me-3 flex-shrink-0">
-      <div
-        className="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center"
-        style={{ width: "40px", height: "40px" }}
-      >
-        <i
-          className={`fas ${getTypeIcon(
-            incident.incident_type
-          )} text-white`}
-        ></i>
-      </div>
-    </div>
-    <div className="flex-grow-1 min-w-0">
-      {/* Title */}
-      <div
-        className="fw-semibold text-dark text-truncate"
-        style={{ fontSize: "0.9rem", lineHeight: "1.3" }}
-        title={incident.title}
-      >
-        {incident.title}
-      </div>
-      
-      {/* Description */}
-      <small
-        className="text-muted d-block text-truncate"
-        style={{ fontSize: "0.8rem", lineHeight: "1.3" }}
-        title={incident.description || "No description"}
-      >
-        {incident.description
-          ? incident.description.length > 80
-            ? `${incident.description.substring(0, 80)}...`
-            : incident.description
-          : "No description"}
-      </small>
-    </div>
-  </div>
-</td>
+      {/* Families Count */}
+      <td style={{ width: "80px" }}>
+        <div className="text-center">
+          <div className="fw-semibold text-primary">
+            {incident.affected_families}
+          </div>
+          <small className="text-muted">families</small>
+        </div>
+      </td>
 
-                        {/* Barangay & Reporter */}
-                        <td style={{ maxWidth: "150px", minWidth: "150px" }}>
-                          <div
-                            className="fw-semibold text-dark text-truncate"
-                            style={{ fontSize: "0.9rem" }}
-                            title={incident.reporter?.barangay_name || "N/A"}
-                          >
-                            {incident.reporter?.barangay_name || "N/A"}
-                          </div>
-                          <small
-                            className="text-muted d-block text-truncate"
-                            style={{ fontSize: "0.8rem" }}
-                            title={incident.reporter?.name || "N/A"}
-                          >
-                            {incident.reporter?.name || "N/A"}
-                          </small>
-                        </td>
+      {/* Persons Count */}
+      <td style={{ width: "80px" }}>
+        <div className="text-center">
+          <div className="fw-semibold text-info">
+            {incident.affected_individuals}
+          </div>
+          <small className="text-muted">persons</small>
+        </div>
+      </td>
 
-                        {/* Type */}
-                        <td style={{ width: "120px" }}>
-                          <span
-                            className="badge bg-light text-dark border"
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            <i
-                              className={`fas ${getTypeIcon(
-                                incident.incident_type
-                              )} me-1`}
-                            ></i>
-                            {incident.incident_type}
-                          </span>
-                        </td>
-
-                        {/* Severity */}
-                        <td style={{ width: "100px" }}>
-                          <span
-                            className={`badge ${getSeverityBadge(
-                              incident.severity
-                            )}`}
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            {incident.severity}
-                          </span>
-                        </td>
-
-                        {/* Status */}
-                        <td style={{ width: "120px" }}>
-                          <span
-                            className={`badge ${getStatusBadge(
-                              incident.status
-                            )}`}
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            {incident.status}
-                          </span>
-                        </td>
-
-                        {/* Location */}
-                        <td style={{ maxWidth: "200px", minWidth: "200px" }}>
-                          <div
-                            className="fw-semibold text-dark text-truncate"
-                            style={{ fontSize: "0.9rem" }}
-                            title={incident.location}
-                          >
-                            {incident.location}
-                          </div>
-                        </td>
-
-                        {/* Incident Date */}
-                        <td className="text-center" style={{ width: "130px" }}>
-                          <div
-                            className="fw-semibold text-dark"
-                            style={{ fontSize: "0.85rem" }}
-                          >
-                            {formatLocalDate(incident.incident_date)}
-                          </div>
-                          <div
-                            className="text-muted"
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            {formatLocalTime(incident.incident_date)}
-                          </div>
-                        </td>
-
-                        {/* Reported */}
-                        <td className="text-center" style={{ width: "130px" }}>
-                          <div
-                            className="fw-semibold text-dark"
-                            style={{ fontSize: "0.85rem" }}
-                          >
-                            {formatLocalDate(incident.created_at)}
-                          </div>
-                          <div
-                            className="text-muted"
-                            style={{ fontSize: "0.8rem" }}
-                          >
-                            {formatLocalTime(incident.created_at)}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+      {/* Incident Date */}
+      <td className="text-center" style={{ width: "130px" }}>
+        <div
+          className="fw-semibold text-dark"
+          style={{ fontSize: "0.85rem" }}
+        >
+          {formatLocalDate(incident.incident_date)}
+        </div>
+        <div
+          className="text-muted"
+          style={{ fontSize: "0.8rem" }}
+        >
+          {formatLocalTime(incident.incident_date)}
+        </div>
+      </td>
+    </tr>
+  ))}
+</tbody>
                 </table>
               </div>
 
@@ -2150,37 +2218,52 @@ const handleAddInfrastructureData = (incident) => {
       )}
 
       {/* Add to your existing modals section */}
-{showPopulationModal && selectedIncident && (
-  <PopulationDataModal
-    incident={selectedIncident}
-    onClose={() => {
-      setShowPopulationModal(false);
-      setSelectedIncident(null);
-    }}
-    onSuccess={() => {
-      setShowPopulationModal(false);
-      setSelectedIncident(null);
-      showToast.success("Population data saved successfully!");
-      refreshAllData(); // Refresh to show updated data
-    }}
-  />
-)}
+      {showPopulationModal && selectedIncident && (
+        <PopulationDataModal
+          incident={selectedIncident}
+          onClose={() => {
+            setShowPopulationModal(false);
+            setSelectedIncident(null);
+          }}
+          onSuccess={() => {
+            setShowPopulationModal(false);
+            setSelectedIncident(null);
+            showToast.success("Population data saved successfully!");
+            refreshAllData(); // Refresh to show updated data
+          }}
+        />
+      )}
 
-{showInfrastructureModal && selectedIncident && (
-  <InfrastructureStatusModal
-    incident={selectedIncident}
-    onClose={() => {
-      setShowInfrastructureModal(false);
-      setSelectedIncident(null);
-    }}
-    onSuccess={() => {
-      setShowInfrastructureModal(false);
-      setSelectedIncident(null);
-      showToast.success("Infrastructure status saved successfully!");
-      refreshAllData(); // Refresh to show updated data
-    }}
-  />
-)}
+      {showInfrastructureModal && selectedIncident && (
+        <InfrastructureStatusModal
+          incident={selectedIncident}
+          onClose={() => {
+            setShowInfrastructureModal(false);
+            setSelectedIncident(null);
+          }}
+          onSuccess={() => {
+            setShowInfrastructureModal(false);
+            setSelectedIncident(null);
+            showToast.success("Infrastructure status saved successfully!");
+            refreshAllData(); // Refresh to show updated data
+          }}
+        />
+      )}
+
+      {showEditModal && selectedIncident && (
+        <AdminIncidentEditModal
+          incident={selectedIncident}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedIncident(null);
+          }}
+          onSuccess={() => {
+            setShowEditModal(false);
+            setSelectedIncident(null);
+            refreshAllData();
+          }}
+        />
+      )}
     </div>
   );
 };

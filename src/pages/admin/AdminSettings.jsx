@@ -146,7 +146,7 @@ const AdminSettings = () => {
   };
 
   return (
-    <div className="container-fluid px-1 px-md-1 py-4">
+    <div className="container-fluid px-1 px-md-1 py-4 fadeIn">
       {/* Header */}
       <div className="text-center mb-4">
         <div className="d-flex flex-column flex-md-row justify-content-center align-items-center mb-3">

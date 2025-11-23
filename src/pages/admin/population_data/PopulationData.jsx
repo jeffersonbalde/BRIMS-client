@@ -118,7 +118,7 @@ const PopulationData = () => {
     return actionLock;
   };
 
-  // Skeleton Loaders - Matching IncidentManagement pattern
+  // Skeleton Loaders
   const TableRowSkeleton = () => (
     <tr className="align-middle">
       <td className="text-center">
@@ -185,7 +185,7 @@ const PopulationData = () => {
 
   if (error) {
     return (
-      <div className="container-fluid px-1">
+      <div className="container-fluid px-1 fadeIn">
         <div className="card shadow border-0">
           <div className="card-body text-center py-5">
             <i className="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
@@ -209,13 +209,13 @@ const PopulationData = () => {
   }
 
   return (
-    <div className="container-fluid px-1">
-      {/* Page Header - Matching IncidentManagement pattern */}
+    <div className="container-fluid px-1 fadeIn">
+      {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div className="flex-grow-1">
           <h1 className="h3 mb-1 text-dark">Barangay Population Data</h1>
           <p className="text-muted mb-0">
-            Population data overview for all barangays
+            Accurate population data overview for all barangays
           </p>
         </div>
         <div className="d-flex align-items-center gap-2 flex-wrap">
@@ -246,7 +246,7 @@ const PopulationData = () => {
         </div>
       </div>
 
-      {/* Stats Overview - Matching IncidentManagement pattern */}
+      {/* Stats Overview */}
       <div className="row mb-4 g-3">
         {loading ? (
           <>
@@ -319,14 +319,14 @@ const PopulationData = () => {
                   <div className="d-flex align-items-center">
                     <div className="flex-grow-1">
                       <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "#17a2b8" }}>
-                        Total Incidents
+                        Total Population
                       </div>
                       <div className="h4 mb-0 fw-bold" style={{ color: "#17a2b8" }}>
-                        {barangayData.reduce((sum, item) => sum + item.total_incidents, 0)}
+                        {barangayData.reduce((sum, item) => sum + (item.population_data?.total_population || 0), 0)}
                       </div>
                     </div>
                     <div className="col-auto">
-                      <i className="fas fa-file-alt fa-lg" style={{ color: "#17a2b8", opacity: 0.7 }}></i>
+                      <i className="fas fa-users fa-lg" style={{ color: "#17a2b8", opacity: 0.7 }}></i>
                     </div>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ const PopulationData = () => {
         )}
       </div>
 
-      {/* Search and Filter Controls - Matching IncidentManagement pattern */}
+      {/* Search and Filter Controls */}
       <div className="card shadow border-0 mb-4">
         <div className="card-body p-3">
           <div className="row g-2 g-md-3 align-items-end">
@@ -431,7 +431,7 @@ const PopulationData = () => {
         </div>
       </div>
 
-      {/* Main Content Card - Matching IncidentManagement pattern */}
+      {/* Main Content Card */}
       <div className="card shadow border-0">
         <div
           className="card-header py-3"
@@ -621,7 +621,7 @@ const PopulationData = () => {
                 </table>
               </div>
 
-              {/* Pagination - Matching IncidentManagement pattern */}
+              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="card-footer bg-white border-top-0 py-3">
                   <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">

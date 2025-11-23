@@ -89,7 +89,7 @@ const IncidentAnalytics = () => {
     return colors[status] || '#6c757d';
   };
 
-  // Skeleton Loaders - Only for data content
+  // Skeleton Loaders
   const StatsCardSkeleton = () => (
     <div className="col-6 col-md-3">
       <div className="card border-left-primary shadow-sm h-100">
@@ -175,7 +175,7 @@ const IncidentAnalytics = () => {
 
   if (error) {
     return (
-      <div className="container-fluid px-1">
+      <div className="container-fluid px-1 fadeIn">
         <div className="card shadow border-0">
           <div className="card-body text-center py-5">
             <i className="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
@@ -200,7 +200,7 @@ const IncidentAnalytics = () => {
 
   if (!analytics && !loading) {
     return (
-      <div className="container-fluid px-1">
+      <div className="container-fluid px-1 fadeIn">
         <div className="card shadow border-0">
           <div className="card-body text-center py-5">
             <i className="fas fa-chart-bar fa-3x text-muted mb-3"></i>
@@ -225,7 +225,15 @@ const IncidentAnalytics = () => {
     );
   }
 
-  const { overall_stats, population_stats, incidents_by_type, incidents_by_barangay, monthly_trends, severity_distribution, status_distribution } = analytics || {};
+  const { 
+    overall_stats, 
+    population_stats, 
+    incidents_by_type, 
+    incidents_by_barangay, 
+    monthly_trends, 
+    severity_distribution, 
+    status_distribution 
+  } = analytics || {};
 
   // Add safe fallbacks for missing data
   const safeOverallStats = overall_stats || {
@@ -240,6 +248,8 @@ const IncidentAnalytics = () => {
     total_affected: 0,
     total_displaced_families: 0,
     total_displaced_persons: 0,
+    total_families_assisted: 0,
+    total_families_requiring_assistance: 0,
     avg_assistance_coverage: 0
   };
 
@@ -250,8 +260,8 @@ const IncidentAnalytics = () => {
   const safeStatusDistribution = status_distribution || [];
 
   return (
-    <div className="container-fluid px-1">
-      {/* Page Header - Always visible */}
+    <div className="container-fluid px-1 fadeIn">
+      {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div className="flex-grow-1">
           <h1 className="h3 mb-1 text-dark">Incident Analytics</h1>
@@ -301,7 +311,7 @@ const IncidentAnalytics = () => {
         </div>
       </div>
 
-      {/* Summary Cards - Show skeleton when loading */}
+      {/* Summary Cards */}
       <div className="row mb-4 g-3">
         {loading ? (
           <>
@@ -394,14 +404,14 @@ const IncidentAnalytics = () => {
         )}
       </div>
 
-      {/* Population Stats Cards - Show skeleton when loading */}
+      {/* Population Stats Cards */}
       {loading ? (
         <div className="row mb-4 g-3">
           {[...Array(4)].map((_, index) => (
             <StatsCardSkeleton key={index} />
           ))}
         </div>
-      ) : safePopulationStats && (
+      ) : (
         <div className="row mb-4 g-3">
           <div className="col-6 col-md-3">
             <div className="card stats-card h-100">
@@ -447,10 +457,13 @@ const IncidentAnalytics = () => {
                 <div className="d-flex align-items-center">
                   <div className="flex-grow-1">
                     <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "#198754" }}>
-                      Assistance Coverage
+                      Families Assisted
                     </div>
                     <div className="h4 mb-0 fw-bold" style={{ color: "#198754" }}>
-                      {formatNumber(safePopulationStats.avg_assistance_coverage)}%
+                      {formatNumber(safePopulationStats.total_families_assisted)}
+                    </div>
+                    <div className="small text-muted">
+                      {formatNumber(safePopulationStats.avg_assistance_coverage)}% Coverage
                     </div>
                   </div>
                   <div className="col-auto">
@@ -482,7 +495,7 @@ const IncidentAnalytics = () => {
         </div>
       )}
 
-      {/* Charts Row - Show skeleton when loading */}
+      {/* Charts Row */}
       {loading ? (
         <div className="row">
           <div className="col-xl-6">
@@ -571,7 +584,7 @@ const IncidentAnalytics = () => {
         </div>
       )}
 
-      {/* Status Distribution and Monthly Trends - Show skeleton when loading */}
+      {/* Status Distribution and Monthly Trends */}
       {loading ? (
         <div className="row">
           <div className="col-xl-6">
@@ -660,7 +673,7 @@ const IncidentAnalytics = () => {
         </div>
       )}
 
-      {/* Barangay-wise Distribution - Show skeleton when loading */}
+      {/* Barangay-wise Distribution */}
       {loading ? (
         <div className="row">
           <div className="col-12">
@@ -754,12 +767,12 @@ const IncidentAnalytics = () => {
                             </td>
                             <td className="text-center">
                               <span className="badge bg-warning text-dark">
-                                {Math.round(item.count * 0.3)}
+                                {formatNumber(item.high_critical_count || 0)}
                               </span>
                             </td>
                             <td className="text-center">
                               <span className="badge bg-success">
-                                {Math.round(item.count * 0.6)}
+                                {formatNumber(item.resolved_count || 0)}
                               </span>
                             </td>
                           </tr>

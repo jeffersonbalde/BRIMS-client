@@ -143,7 +143,7 @@ const AdminDashboard = () => {
   }, 0);
 
   return (
-    <div className="container-fluid px-1">
+    <div className="container-fluid px-1 fadeIn">
       {/* Page Header - ALWAYS VISIBLE (No skeleton) */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
         <div className="flex-grow-1">

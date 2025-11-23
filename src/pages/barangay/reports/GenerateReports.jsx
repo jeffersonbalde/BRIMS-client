@@ -1,4 +1,4 @@
-// pages/barangay/GenerateReports.jsx
+// pages/barangay/GenerateReports.jsx - FIXED WITH ALL REPORT TYPES
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { showToast } from "../../../services/notificationService";
@@ -8,474 +8,482 @@ import autoTable from "jspdf-autotable";
 const GenerateReports = () => {
   const { user, token } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [actionLock, setActionLock] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-  
-  const [filters, setFilters] = useState({
-    type: 'incidents',
-    date_from: '',
-    date_to: ''
+  const [filters, setFilters] = useState({ 
+    type: 'population_detailed', 
+    date_from: '', 
+    date_to: '',
+    barangay: user?.barangay_name || '',
+    incident_type: 'all'
   });
   const [reportData, setReportData] = useState(null);
-  
-  const [searchTerm, setSearchTerm] = useState("");
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [sortField, setSortField] = useState("created_at");
-  const [sortDirection, setSortDirection] = useState("desc");
+  const [incidents, setIncidents] = useState([]);
+  const [selectedIncident, setSelectedIncident] = useState('all');
 
-  const [stats, setStats] = useState({
-    total: 0,
-    resolved: 0,
-    investigating: 0,
-    reported: 0,
-  });
+  const fetchIncidents = async () => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API}/reports/incidents-dropdown`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          barangay: user?.barangay_name,
+          incident_type: filters.incident_type
+        })
+      });
 
-  useEffect(() => {
-    if (reportData) {
-      calculateStats();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        setIncidents(data.incidents || []);
+      } else {
+        throw new Error(data.message || 'Failed to fetch incidents');
+      }
+    } catch (error) {
+      console.error('Failed to fetch incidents:', error);
+      showToast.error('Failed to load incidents list');
     }
-  }, [reportData]);
-
-const calculateStats = () => {
-  if (!reportData) return;
-
-  let statsData = { total: 0, resolved: 0, investigating: 0, reported: 0 };
-
-  if (filters.type === 'incidents' && reportData.incidents) {
-    // Fix: Extract counts from the by_status object
-    const byStatus = reportData.summary?.by_status || {};
-    statsData = {
-      total: reportData.summary?.total || 0,
-      resolved: byStatus.Resolved || 0,
-      investigating: byStatus.Investigating || 0,
-      reported: byStatus.Reported || 0,
-    };
-  } else if (filters.type === 'population' && reportData.population_data) {
-    statsData = {
-      total: reportData.summary?.total_records || 0,
-      resolved: reportData.summary?.total_families_assisted || 0,
-      investigating: reportData.summary?.total_displaced || 0,
-      reported: reportData.summary?.total_population || 0,
-    };
-  } else if (filters.type === 'infrastructure' && reportData.infrastructure_data) {
-    statsData = {
-      total: reportData.summary?.total_records || 0,
-      resolved: reportData.summary?.communication_issues || 0,
-      investigating: reportData.summary?.power_outages || 0,
-      reported: reportData.summary?.roads_affected || 0,
-    };
-  }
-
-  setStats(statsData);
-};
+  };
 
   const generateReport = async () => {
-    if (actionLock) {
-      showToast.warning("Please wait until the current action completes");
-      return;
-    }
-
-    setActionLock(true);
     setLoading(true);
+    setReportData(null);
     
     try {
+      let endpoint = '/reports/population-detailed';
+      let requestBody = {
+        date_from: filters.date_from,
+        date_to: filters.date_to,
+        barangay: user?.barangay_name,
+        incident_type: filters.incident_type
+      };
+
+      // Set different endpoints based on report type
+      switch(filters.type) {
+        case 'incidents':
+          endpoint = '/reports/incidents';
+          break;
+        case 'summary':
+          endpoint = '/reports/summary';
+          break;
+        case 'population_detailed':
+        default:
+          endpoint = '/reports/population-detailed';
+          if (selectedIncident !== 'all') {
+            requestBody.incident_id = selectedIncident;
+          }
+          break;
+      }
+
+      console.log('🔄 Generating report:', { endpoint, requestBody });
+
       const response = await fetch(
-        `${import.meta.env.VITE_LARAVEL_API}/reports/barangay`,
+        `${import.meta.env.VITE_LARAVEL_API}${endpoint}`,
         {
           method: 'POST',
-          headers: {
+          headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(filters)
+          body: JSON.stringify(requestBody)
         }
       );
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log('📊 Report API response:', data);
       
       if (data.success) {
         setReportData(data.data);
-        setCurrentPage(1);
-        showToast.success('Report generated successfully');
+        showToast.success(`${getReportTypeLabel()} generated successfully`);
       } else {
-        throw new Error(data.message);
+        throw new Error(data.message || 'Unknown error from server');
       }
+
     } catch (error) {
       console.error('Report generation error:', error);
       showToast.error('Failed to generate report: ' + error.message);
     } finally {
       setLoading(false);
-      setActionLock(false);
     }
   };
 
+  // NEW: Export different PDFs based on report type
   const exportToPDF = async () => {
-    if (!reportData) {
-      showToast.error('No report data available to export');
-      return;
-    }
-
-    if (actionLock) {
-      showToast.warning("Please wait until the current action completes");
-      return;
-    }
-
-    setActionLock(true);
-    setExportLoading(true);
-
+    if (!reportData) return;
+    
     try {
-      const doc = new jsPDF();
-      const reportType = filters.type.charAt(0).toUpperCase() + filters.type.slice(1);
-      const dateRange = getDateRangeText();
-      const generatedDate = new Date().toLocaleString();
-
-      // Title and Header
-      doc.setFontSize(16);
-      doc.setTextColor(41, 128, 185);
-      doc.text(`${user?.barangay_name?.toUpperCase()} ${reportType.toUpperCase()} REPORT`, 105, 15, { align: 'center' });
-      
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Generated on: ${generatedDate}`, 14, 25);
-      doc.text(`Date Range: ${dateRange}`, 14, 32);
-      doc.text(`Total Records: ${stats.total}`, 14, 39);
-      doc.text(`Barangay: ${user?.barangay_name || 'N/A'}`, 14, 46);
-
-      let startY = 55;
-
-      // Summary Statistics Table
-      doc.setFontSize(12);
-      doc.setTextColor(0, 0, 0);
-      doc.text('SUMMARY STATISTICS', 14, startY);
-
-      const summaryData = getSummaryData();
-      
-      autoTable(doc, {
-        startY: startY + 5,
-        head: [['Metric', 'Value']],
-        body: summaryData,
-        theme: 'grid',
-        headStyles: { 
-          fillColor: [41, 128, 185],
-          textColor: [255, 255, 255],
-          fontStyle: 'bold'
-        },
-        styles: { fontSize: 10 },
-        margin: { top: 10 }
-      });
-
-      // Detailed Data Table
-      const data = getFilteredData();
-      if (data.length > 0) {
-        startY = doc.lastAutoTable.finalY + 15;
-        doc.text('DETAILED REPORT DATA', 14, startY);
-
-        const tableData = getTableDataForPDF(data);
-        const headers = getTableHeaders();
-
-        autoTable(doc, {
-          startY: startY + 5,
-          head: [headers],
-          body: tableData,
-          theme: 'grid',
-          headStyles: { 
-            fillColor: [52, 152, 219],
-            textColor: [255, 255, 255],
-            fontStyle: 'bold'
-          },
-          styles: { 
-            fontSize: 8,
-            cellPadding: 2
-          },
-          columnStyles: getColumnStyles(),
-          pageBreak: 'auto',
-          margin: { top: 10 }
-        });
+      switch(filters.type) {
+        case 'incidents':
+          await exportIncidentsPDF();
+          break;
+        case 'summary':
+          await exportSummaryPDF();
+          break;
+        case 'population_detailed':
+        default:
+          await exportPopulationDetailedPDF();
+          break;
       }
-
-      // Footer
-      const pageCount = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
-        doc.text(`Barangay Reporting System - ${user?.barangay_name || 'N/A'}`, 105, 290, { align: 'center' });
-      }
-
-      // Save PDF
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      doc.save(`${user?.barangay_name}_${reportType}_Report_${timestamp}.pdf`);
-      
-      showToast.success('PDF exported successfully');
     } catch (error) {
       console.error('PDF export error:', error);
-      showToast.error('Failed to export PDF: ' + error.message);
-    } finally {
-      setExportLoading(false);
-      setActionLock(false);
+      showToast.error('Failed to export PDF');
     }
   };
 
-  const exportToExcel = async () => {
-    if (!reportData) {
-      showToast.error('No report data available to export');
-      return;
-    }
-
-    if (actionLock) {
-      showToast.warning("Please wait until the current action completes");
-      return;
-    }
-
-    setActionLock(true);
-    setExportLoading(true);
-
-    try {
-      const data = getFilteredData();
-      const headers = getTableHeaders();
-      const excelData = [headers];
-
-      data.forEach(item => {
-        const row = getTableDataForExcel(item);
-        excelData.push(row);
-      });
-
-      // Create CSV content
-      const csvContent = excelData.map(row => 
-        row.map(field => `"${field}"`).join(',')
-      ).join('\n');
-
-      // Create and download file
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${user?.barangay_name}_${filters.type}_Report_${timestamp}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      showToast.success('Excel file exported successfully');
-    } catch (error) {
-      console.error('Excel export error:', error);
-      showToast.error('Failed to export Excel: ' + error.message);
-    } finally {
-      setExportLoading(false);
-      setActionLock(false);
-    }
-  };
-
-  const printReport = () => {
-    if (!reportData) {
-      showToast.error('No report data available to print');
-      return;
-    }
-
-    const printWindow = window.open('', '_blank');
-    const reportType = filters.type.charAt(0).toUpperCase() + filters.type.slice(1);
+  const exportPopulationDetailedPDF = async () => {
+    const doc = new jsPDF();
+    const reportType = getReportTypeLabel();
     const dateRange = getDateRangeText();
     const generatedDate = new Date().toLocaleString();
 
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${user?.barangay_name} ${reportType} Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .summary { margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #f5f5f5; font-weight: bold; }
-          .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>${user?.barangay_name} ${reportType.toUpperCase()} REPORT</h1>
-          <p>Generated on: ${generatedDate} | Date Range: ${dateRange} | Total Records: ${stats.total}</p>
-        </div>
-        
-        <div class="summary">
-          <h3>SUMMARY STATISTICS</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Metric</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${getSummaryData().map(row => `
-                <tr>
-                  <td>${row[0]}</td>
-                  <td>${row[1]}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="details">
-          <h3>DETAILED REPORT DATA</h3>
-          <table>
-            <thead>
-              <tr>
-                ${getTableHeaders().map(header => `<th>${header}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${getFilteredData().map(item => `
-                <tr>
-                  ${getTableDataForPrint(item).map(cell => `<td>${cell}</td>`).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="footer">
-          <p>Barangay Reporting System - ${user?.barangay_name || 'N/A'}</p>
-          <p>Page 1 of 1</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.print();
-    showToast.success('Report sent to printer');
-  };
-
-  const getSummaryData = () => {
-    if (filters.type === 'incidents') {
-      return [
-        ['Total Incidents', stats.total],
-        ['Resolved', stats.resolved],
-        ['Investigating', stats.investigating],
-        ['Reported', stats.reported],
-        ['Resolution Rate', `${((stats.resolved / stats.total) * 100).toFixed(1)}%`]
-      ];
-    } else if (filters.type === 'population') {
-      return [
-        ['Total Records', stats.total],
-        ['Total Population', stats.reported],
-        ['Displaced Persons', stats.investigating],
-        ['Families Assisted', stats.resolved],
-        ['Assistance Coverage', `${((stats.resolved / stats.investigating) * 100).toFixed(1)}%`]
-      ];
-    } else if (filters.type === 'infrastructure') {
-      return [
-        ['Total Records', stats.total],
-        ['Roads Affected', stats.reported],
-        ['Power Outages', stats.investigating],
-        ['Communication Issues', stats.resolved]
-      ];
+    doc.setFontSize(16);
+    doc.setTextColor(41, 128, 185);
+    
+    let title = `${user?.barangay_name} ${reportType} REPORT`;
+    if (filters.type === 'population_detailed' && selectedIncident !== 'all' && reportData.selected_incident) {
+      title = `${user?.barangay_name} - ${reportData.selected_incident.title} - POPULATION REPORT`;
     }
-    return [];
-  };
+    
+    doc.text(title, 105, 15, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${generatedDate}`, 14, 25);
+    doc.text(`Date Range: ${dateRange}`, 14, 32);
 
-  const getTableDataForPDF = (data) => {
-    return data.map(item => {
-      if (filters.type === 'incidents') {
-        return [
-          item.title || 'N/A',
-          item.incident_type || 'N/A',
-          item.status || 'N/A',
-          item.incident_date ? new Date(item.incident_date).toLocaleDateString() : 'N/A',
-          new Date(item.created_at).toLocaleDateString()
-        ];
-      } else if (filters.type === 'population') {
-        return [
-          item.incident_title || 'No Title',
-          item.incident_type || 'Unknown',
-          formatNumber(item.total_population),
-          formatNumber(item.displaced_persons),
-          formatNumber(item.families_assisted),
-          formatNumber(item.pwd_count || 0),
-          formatNumber(item.elderly_count || 0),
-          formatNumber(item.pregnant_count || 0)
-        ];
-      } else if (filters.type === 'infrastructure') {
-        return [
-          item.incident_title || 'No Title',
-          item.incident_type || 'Unknown',
-          item.roads_bridges_status || 'Normal',
-          item.power_outage_time ? 'Yes' : 'No',
-          item.communication_interruption_time ? 'Yes' : 'No',
-          item.roads_remarks || 'No remarks',
-          item.power_remarks || 'No remarks'
-        ];
-      }
-      return [];
+    let startY = 40;
+
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('POPULATION AFFECTED SUMMARY', 14, startY);
+    
+    const populationData = [
+      ['No. of Families', reportData.population_affected?.no_of_families || 0],
+      ['No. of Persons', reportData.population_affected?.no_of_persons || 0],
+      ['Displaced Families', reportData.population_affected?.displaced_families || 0],
+      ['Displaced Persons', reportData.population_affected?.displaced_persons || 0],
+      ['Families Requiring Assistance', reportData.population_affected?.families_requiring_assistance || 0],
+      ['Families Assisted', reportData.population_affected?.families_assisted || 0],
+      ['% Families Assisted', `${reportData.population_affected?.percentage_families_assisted || 0}%`],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Metric', 'Count']],
+      body: populationData,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [41, 128, 185],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
     });
-  };
 
-  const getTableDataForExcel = (item) => {
-    if (filters.type === 'incidents') {
-      return [
-        item.title || 'N/A',
-        item.incident_type || 'N/A',
-        item.status || 'N/A',
-        item.incident_date ? new Date(item.incident_date).toLocaleDateString() : 'N/A',
-        new Date(item.created_at).toLocaleDateString()
-      ];
-    } else if (filters.type === 'population') {
-      return [
-        item.incident_title || 'No Title',
-        item.incident_type || 'Unknown',
-        formatNumber(item.total_population),
-        formatNumber(item.displaced_persons),
-        formatNumber(item.families_assisted),
-        formatNumber(item.pwd_count || 0),
-        formatNumber(item.elderly_count || 0),
-        formatNumber(item.pregnant_count || 0)
-      ];
-    } else if (filters.type === 'infrastructure') {
-      return [
-        item.incident_title || 'No Title',
-        item.incident_type || 'Unknown',
-        item.roads_bridges_status || 'Normal',
-        item.power_outage_time ? 'Yes' : 'No',
-        item.communication_interruption_time ? 'Yes' : 'No',
-        item.roads_remarks || 'No remarks',
-        item.power_remarks || 'No remarks'
-      ];
+    startY = doc.lastAutoTable.finalY + 10;
+    doc.text('GENDER BREAKDOWN', 14, startY);
+    
+    const genderData = [
+      ['Male', reportData.gender_breakdown?.male || 0],
+      ['Female', reportData.gender_breakdown?.female || 0],
+      ['LGBTQIA+ / Other', reportData.gender_breakdown?.lgbtqia || 0],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Gender', 'Count']],
+      body: genderData,
+      theme: 'grid',
+    });
+
+    startY = doc.lastAutoTable.finalY + 10;
+    doc.text('CIVIL STATUS', 14, startY);
+    
+    const civilStatusData = [
+      ['Single', reportData.civil_status?.single || 0],
+      ['Married', reportData.civil_status?.married || 0],
+      ['Widowed', reportData.civil_status?.widowed || 0],
+      ['Separated', reportData.civil_status?.separated || 0],
+      ['Live-In/Cohabiting', reportData.civil_status?.live_in || 0],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Civil Status', 'Count']],
+      body: civilStatusData,
+      theme: 'grid',
+    });
+
+    startY = doc.lastAutoTable.finalY + 10;
+    doc.text('VULNERABLE GROUPS', 14, startY);
+    
+    const vulnerableData = Object.entries(reportData.vulnerable_groups || {}).map(([key, value]) => [
+      key.replace(/_/g, ' ').replace('4ps', '4Ps').replace(/\b\w/g, l => l.toUpperCase()),
+      value
+    ]);
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Vulnerable Group', 'Count']],
+      body: vulnerableData,
+      theme: 'grid',
+    });
+
+    startY = doc.lastAutoTable.finalY + 10;
+    doc.text('AGE CATEGORIES', 14, startY);
+    
+    const ageData = [
+      ['Infant (0-6 mos)', reportData.age_categories?.infant || 0],
+      ['Toddlers (7 mos-2 y/o)', reportData.age_categories?.toddlers || 0],
+      ['Preschooler (3-5 y/o)', reportData.age_categories?.preschooler || 0],
+      ['School Age (6-12 y/o)', reportData.age_categories?.school_age || 0],
+      ['Teen Age (13-17 y/o)', reportData.age_categories?.teen_age || 0],
+      ['Adult (18-59 y/o)', reportData.age_categories?.adult || 0],
+      ['Elderly (60 and above)', reportData.age_categories?.elderly_age || 0],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Age Category', 'Count']],
+      body: ageData,
+      theme: 'grid',
+    });
+
+    startY = doc.lastAutoTable.finalY + 10;
+    doc.text('CASUALTIES', 14, startY);
+    
+    const casualtyData = [
+      ['Dead', reportData.casualties?.dead || 0],
+      ['Injured/Ill', reportData.casualties?.injured_ill || 0],
+      ['Missing', reportData.casualties?.missing || 0],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Casualty Type', 'Count']],
+      body: casualtyData,
+      theme: 'grid',
+    });
+
+    if (reportData.incident_types && Object.keys(reportData.incident_types).length > 0) {
+      startY = doc.lastAutoTable.finalY + 10;
+      doc.text('INCIDENT TYPES SUMMARY', 14, startY);
+      
+      const incidentTypeData = Object.entries(reportData.incident_types).map(([type, count]) => [type, count]);
+      
+      autoTable(doc, {
+        startY: startY + 5,
+        head: [['Incident Type', 'Count']],
+        body: incidentTypeData,
+        theme: 'grid',
+      });
     }
-    return [];
-  };
 
-  const getTableDataForPrint = (item) => {
-    return getTableDataForExcel(item);
-  };
-
-  const getTableHeaders = () => {
-    if (filters.type === 'incidents') {
-      return ['Title', 'Type', 'Status', 'Incident Date', 'Reported Date'];
-    } else if (filters.type === 'population') {
-      return ['Incident', 'Type', 'Population', 'Displaced', 'Families', 'PWD', 'Elderly', 'Pregnant'];
-    } else if (filters.type === 'infrastructure') {
-      return ['Incident', 'Type', 'Roads Status', 'Power Outage', 'Comm Issues', 'Roads Remarks', 'Power Remarks'];
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
     }
-    return [];
+
+    doc.save(`${user?.barangay_name}_${reportType.replace(/\s+/g, '_')}_Report.pdf`);
+    showToast.success('PDF exported successfully');
   };
 
-  const getColumnStyles = () => {
-    if (filters.type === 'incidents') {
-      return { 0: { cellWidth: 50 }, 1: { cellWidth: 30 }, 2: { cellWidth: 25 }, 3: { cellWidth: 30 }, 4: { cellWidth: 30 } };
-    } else if (filters.type === 'population') {
-      return { 0: { cellWidth: 35 }, 1: { cellWidth: 25 }, 2: { cellWidth: 20 }, 3: { cellWidth: 15 }, 4: { cellWidth: 15 }, 5: { cellWidth: 10 }, 6: { cellWidth: 10 }, 7: { cellWidth: 10 } };
-    } else if (filters.type === 'infrastructure') {
-      return { 0: { cellWidth: 35 }, 1: { cellWidth: 25 }, 2: { cellWidth: 25 }, 3: { cellWidth: 20 }, 4: { cellWidth: 20 }, 5: { cellWidth: 30 }, 6: { cellWidth: 30 } };
+  // NEW: Export Incidents Report PDF
+  const exportIncidentsPDF = async () => {
+    const doc = new jsPDF();
+    const reportType = getReportTypeLabel();
+    const dateRange = getDateRangeText();
+    const generatedDate = new Date().toLocaleString();
+
+    doc.setFontSize(16);
+    doc.setTextColor(41, 128, 185);
+    doc.text(`${user?.barangay_name} INCIDENTS REPORT`, 105, 15, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${generatedDate}`, 14, 25);
+    doc.text(`Date Range: ${dateRange}`, 14, 32);
+
+    let startY = 45;
+
+    // Incident Summary
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('INCIDENT SUMMARY', 14, startY);
+    
+    const summaryData = [
+      ['Total Incidents', reportData.total_incidents || 0],
+      ['Active Incidents', reportData.active_incidents || 0],
+      ['Resolved Incidents', reportData.resolved_incidents || 0],
+      ['High/Critical Incidents', reportData.high_critical_incidents || 0],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Metric', 'Count']],
+      body: summaryData,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [41, 128, 185],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+    });
+
+    // Incident Types Breakdown
+    startY = doc.lastAutoTable.finalY + 10;
+    doc.text('INCIDENT TYPES BREAKDOWN', 14, startY);
+    
+    const incidentTypesData = Object.entries(reportData.incident_types || {}).map(([type, count]) => [type, count]);
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Incident Type', 'Count']],
+      body: incidentTypesData,
+      theme: 'grid',
+    });
+
+    // Recent Incidents List
+    if (reportData.recent_incidents && reportData.recent_incidents.length > 0) {
+      startY = doc.lastAutoTable.finalY + 10;
+      doc.text('RECENT INCIDENTS', 14, startY);
+      
+      const incidentsData = reportData.recent_incidents.map(incident => [
+        incident.title,
+        incident.incident_type,
+        new Date(incident.incident_date).toLocaleDateString(),
+        incident.status
+      ]);
+
+      autoTable(doc, {
+        startY: startY + 5,
+        head: [['Title', 'Type', 'Date', 'Status']],
+        body: incidentsData,
+        theme: 'grid',
+      });
     }
-    return {};
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
+    }
+
+    doc.save(`${user?.barangay_name}_Incidents_Report.pdf`);
+    showToast.success('Incidents PDF exported successfully');
+  };
+
+  // NEW: Export Summary Report PDF
+  const exportSummaryPDF = async () => {
+    const doc = new jsPDF();
+    const reportType = getReportTypeLabel();
+    const dateRange = getDateRangeText();
+    const generatedDate = new Date().toLocaleString();
+
+    doc.setFontSize(16);
+    doc.setTextColor(41, 128, 185);
+    doc.text(`${user?.barangay_name} SUMMARY REPORT`, 105, 15, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Generated on: ${generatedDate}`, 14, 25);
+    doc.text(`Date Range: ${dateRange}`, 14, 32);
+
+    let startY = 45;
+
+    // Overall Summary
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('OVERALL SUMMARY', 14, startY);
+    
+    const summaryData = [
+      ['Total Incidents', reportData.total_incidents || 0],
+      ['Total Families Affected', reportData.total_families || 0],
+      ['Total Persons Affected', reportData.total_persons || 0],
+      ['Resolution Rate', `${reportData.resolution_rate || 0}%`],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Metric', 'Value']],
+      body: summaryData,
+      theme: 'grid',
+      headStyles: { 
+        fillColor: [41, 128, 185],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold'
+      },
+    });
+
+    // Key Statistics
+    startY = doc.lastAutoTable.finalY + 10;
+    doc.text('KEY STATISTICS', 14, startY);
+    
+    const statsData = [
+      ['Displaced Families', reportData.displaced_families || 0],
+      ['Displaced Persons', reportData.displaced_persons || 0],
+      ['Families Assisted', reportData.families_assisted || 0],
+      ['Assistance Coverage', `${reportData.assistance_coverage || 0}%`],
+    ];
+
+    autoTable(doc, {
+      startY: startY + 5,
+      head: [['Statistic', 'Count']],
+      body: statsData,
+      theme: 'grid',
+    });
+
+    // Incident Overview
+    if (reportData.incident_overview) {
+      startY = doc.lastAutoTable.finalY + 10;
+      doc.text('INCIDENT OVERVIEW', 14, startY);
+      
+      const overviewData = Object.entries(reportData.incident_overview).map(([type, data]) => [
+        type,
+        data.count || 0,
+        data.families || 0,
+        data.persons || 0
+      ]);
+
+      autoTable(doc, {
+        startY: startY + 5,
+        head: [['Incident Type', 'Count', 'Families', 'Persons']],
+        body: overviewData,
+        theme: 'grid',
+      });
+    }
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' });
+    }
+
+    doc.save(`${user?.barangay_name}_Summary_Report.pdf`);
+    showToast.success('Summary PDF exported successfully');
+  };
+
+  const getReportTypeLabel = () => {
+    switch(filters.type) {
+      case 'population_detailed': return 'Detailed Population';
+      case 'incidents': return 'Incidents';
+      case 'summary': return 'Summary';
+      default: return 'Report';
+    }
   };
 
   const getDateRangeText = () => {
@@ -489,187 +497,472 @@ const calculateStats = () => {
     return 'All Dates';
   };
 
-  const formatNumber = (num) => {
-    if (num === null || num === undefined || isNaN(num)) return 0;
-    return num;
-  };
+  // NEW: Render different report types
+  const renderReport = () => {
+    if (!reportData) return null;
 
-  const getFilteredData = () => {
-    if (!reportData) return [];
-
-    let data = [];
-    if (filters.type === 'incidents' && reportData.incidents) {
-      data = reportData.incidents;
-    } else if (filters.type === 'population' && reportData.population_data) {
-      data = reportData.population_data;
-    } else if (filters.type === 'infrastructure' && reportData.infrastructure_data) {
-      data = reportData.infrastructure_data;
-    }
-
-    if (searchTerm) {
-      data = data.filter(item => 
-        Object.values(item).some(value => 
-          value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
-    }
-
-    return data;
-  };
-
-  const getSortedData = (data) => {
-    return [...data].sort((a, b) => {
-      let aValue = a[sortField];
-      let bValue = b[sortField];
-
-      if (sortField.includes('date') || sortField.includes('created_at') || sortField.includes('time')) {
-        aValue = new Date(aValue);
-        bValue = new Date(bValue);
-      }
-
-      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-  };
-
-  const handleSort = (field) => {
-    if (actionLock) return;
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
+    switch(filters.type) {
+      case 'incidents':
+        return renderIncidentsReport();
+      case 'summary':
+        return renderSummaryReport();
+      case 'population_detailed':
+      default:
+        return renderPopulationDetailedReport();
     }
   };
 
-  const getSortIcon = (field) => {
-    if (sortField !== field) return "fas fa-sort";
-    return sortDirection === "asc" ? "fas fa-sort-up" : "fas fa-sort-down";
-  };
-
-  const isActionDisabled = () => {
-    return actionLock || loading;
-  };
-
-  // Pagination
-  const filteredData = getFilteredData();
-  const sortedData = getSortedData(filteredData);
-  const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentData = sortedData.slice(startIndex, endIndex);
-
-  // Skeleton Loaders
-  const TableRowSkeleton = () => (
-    <tr className="align-middle">
-      <td className="text-center">
-        <div className="skeleton-box" style={{ width: "20px", height: "20px", margin: "0 auto" }}></div>
-      </td>
-      <td>
-        <div className="skeleton-line mb-1"></div>
-        <div className="skeleton-line" style={{ width: "60%" }}></div>
-      </td>
-      <td>
-        <div className="skeleton-line mb-1"></div>
-        <div className="skeleton-line" style={{ width: "80%" }}></div>
-      </td>
-      <td>
-        <div className="skeleton-badge"></div>
-      </td>
-      <td>
-        <div className="skeleton-badge"></div>
-      </td>
-      <td>
-        <div className="skeleton-line" style={{ width: "70%" }}></div>
-      </td>
-    </tr>
-  );
-
-  const StatsCardSkeleton = () => (
-    <div className="col-6 col-md-3">
-      <div className="card border-left-primary shadow-sm h-100">
-        <div className="card-body p-3">
-          <div className="d-flex align-items-center">
-            <div className="flex-grow-1">
-              <div className="skeleton-line mb-2" style={{ width: "80%", height: "12px" }}></div>
-              <div className="skeleton-line" style={{ width: "50%", height: "20px" }}></div>
+  // NEW: Render Incidents Report
+  const renderIncidentsReport = () => {
+    return (
+      <div className="row g-4">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header bg-primary text-white">
+              <h6 className="mb-0">Incident Summary</h6>
             </div>
-            <div className="col-auto">
-              <div className="skeleton-avatar" style={{ width: "30px", height: "30px" }}></div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-primary">{reportData.total_incidents || 0}</h4>
+                    <small className="text-muted">Total Incidents</small>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-warning">{reportData.active_incidents || 0}</h4>
+                    <small className="text-muted">Active Incidents</small>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-success">{reportData.resolved_incidents || 0}</h4>
+                    <small className="text-muted">Resolved Incidents</small>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-danger">{reportData.high_critical_incidents || 0}</h4>
+                    <small className="text-muted">High/Critical</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-header bg-info text-white">
+              <h6 className="mb-0">Incident Types</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-2">
+                {Object.entries(reportData.incident_types || {}).map(([type, count]) => (
+                  <div key={type} className="col-12">
+                    <div className="d-flex justify-content-between align-items-center border-bottom py-2">
+                      <span>{type}</span>
+                      <strong className="text-primary">{count}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-header bg-warning text-dark">
+              <h6 className="mb-0">Recent Incidents</h6>
+            </div>
+            <div className="card-body">
+              <div className="list-group list-group-flush">
+                {reportData.recent_incidents && reportData.recent_incidents.map((incident, index) => (
+                  <div key={index} className="list-group-item">
+                    <h6 className="mb-1">{incident.title}</h6>
+                    <p className="mb-1 small text-muted">
+                      {incident.incident_type} • {new Date(incident.incident_date).toLocaleDateString()}
+                    </p>
+                    <span className={`badge ${
+                      incident.status === 'Resolved' ? 'bg-success' : 
+                      incident.status === 'Investigating' ? 'bg-warning' : 'bg-primary'
+                    }`}>
+                      {incident.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-
-  const formatLocalDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Invalid Date";
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-    } catch (error) {
-      return "Date Error";
-    }
+    );
   };
 
-  const formatLocalTime = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Invalid Time";
-      return date.toLocaleTimeString("en-US", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch (error) {
-      return "Time Error";
-    }
+  // NEW: Render Summary Report
+  const renderSummaryReport = () => {
+    return (
+      <div className="row g-4">
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header bg-primary text-white">
+              <h6 className="mb-0">Overall Summary</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-primary">{reportData.total_incidents || 0}</h4>
+                    <small className="text-muted">Total Incidents</small>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-info">{reportData.total_families || 0}</h4>
+                    <small className="text-muted">Families Affected</small>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-info">{reportData.total_persons || 0}</h4>
+                    <small className="text-muted">Persons Affected</small>
+                  </div>
+                </div>
+                <div className="col-md-3">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-success">{reportData.resolution_rate || 0}%</h4>
+                    <small className="text-muted">Resolution Rate</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header bg-success text-white">
+              <h6 className="mb-0">Key Statistics</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-warning">{reportData.displaced_families || 0}</h4>
+                    <small className="text-muted">Displaced Families</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-warning">{reportData.displaced_persons || 0}</h4>
+                    <small className="text-muted">Displaced Persons</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-success">{reportData.families_assisted || 0}</h4>
+                    <small className="text-muted">Families Assisted</small>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="border rounded p-3 text-center bg-light">
+                    <h4 className="text-success">{reportData.assistance_coverage || 0}%</h4>
+                    <small className="text-muted">Assistance Coverage Rate</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {reportData.incident_overview && (
+          <div className="col-12">
+            <div className="card">
+              <div className="card-header bg-info text-white">
+                <h6 className="mb-0">Incident Overview</h6>
+              </div>
+              <div className="card-body">
+                <div className="table-responsive">
+                  <table className="table table-striped">
+                    <thead>
+                      <tr>
+                        <th>Incident Type</th>
+                        <th>Count</th>
+                        <th>Families Affected</th>
+                        <th>Persons Affected</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(reportData.incident_overview).map(([type, data]) => (
+                        <tr key={type}>
+                          <td>{type}</td>
+                          <td><strong>{data.count || 0}</strong></td>
+                          <td>{data.families || 0}</td>
+                          <td>{data.persons || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
+
+  // Keep the existing renderPopulationDetailedReport function (it's the same as before)
+  const renderPopulationDetailedReport = () => {
+    // ... (keep the existing implementation exactly as it was)
+    if (!reportData) return null;
+
+    return (
+      <div className="row g-4">
+        {selectedIncident !== 'all' && reportData.selected_incident && (
+          <div className="col-12">
+            <div className="card bg-light">
+              <div className="card-body">
+                <h5 className="card-title mb-1">{reportData.selected_incident.title}</h5>
+                <p className="card-text text-muted mb-0">
+                  Incident Date: {new Date(reportData.selected_incident.incident_date).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header bg-primary text-white">
+              <h6 className="mb-0">Population Affected</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-primary">{reportData.population_affected?.no_of_families || 0}</h4>
+                    <small className="text-muted">No. of Families</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-primary">{reportData.population_affected?.no_of_persons || 0}</h4>
+                    <small className="text-muted">No. of Persons</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-warning">{reportData.population_affected?.displaced_families || 0}</h4>
+                    <small className="text-muted">Displaced Families</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-warning">{reportData.population_affected?.displaced_persons || 0}</h4>
+                    <small className="text-muted">Displaced Persons</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-info">{reportData.population_affected?.families_requiring_assistance || 0}</h4>
+                    <small className="text-muted">Families Requiring Assistance</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-success">{reportData.population_affected?.families_assisted || 0}</h4>
+                    <small className="text-muted">Families Assisted</small>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="border rounded p-3 text-center bg-light">
+                    <h4 className="text-success">{reportData.population_affected?.percentage_families_assisted || 0}%</h4>
+                    <small className="text-muted">Percentage of Families Assisted</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ... rest of the existing population detailed report code ... */}
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-header bg-info text-white">
+              <h6 className="mb-0">Gender Breakdown</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-2">
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>Male</span>
+                    <strong className="text-primary">{reportData.gender_breakdown?.male || 0}</strong>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>Female</span>
+                    <strong className="text-primary">{reportData.gender_breakdown?.female || 0}</strong>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center py-2">
+                    <span>LGBTQIA+ / Other</span>
+                    <strong className="text-primary">{reportData.gender_breakdown?.lgbtqia || 0}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-md-6">
+          <div className="card">
+            <div className="card-header bg-info text-white">
+              <h6 className="mb-0">Civil Status</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-2">
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>Single</span>
+                    <strong className="text-primary">{reportData.civil_status?.single || 0}</strong>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>Married</span>
+                    <strong className="text-primary">{reportData.civil_status?.married || 0}</strong>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>Widowed</span>
+                    <strong className="text-primary">{reportData.civil_status?.widowed || 0}</strong>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <span>Separated</span>
+                    <strong className="text-primary">{reportData.civil_status?.separated || 0}</strong>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="d-flex justify-content-between align-items-center py-2">
+                    <span>Live-In/Cohabiting</span>
+                    <strong className="text-primary">{reportData.civil_status?.live_in || 0}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header bg-warning text-dark">
+              <h6 className="mb-0">Vulnerable Groups</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                {Object.entries(reportData.vulnerable_groups || {}).map(([key, value]) => (
+                  <div key={key} className="col-md-4 col-sm-6">
+                    <div className="border rounded p-3 text-center">
+                      <h5 className="text-primary mb-1">{value}</h5>
+                      <small className="text-muted text-capitalize">
+                        {key.replace(/_/g, ' ')
+                            .replace('4ps', '4Ps')
+                            .replace('gbv', 'GBV')
+                            .replace(/\b\w/g, l => l.toUpperCase())}
+                      </small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header bg-success text-white">
+              <h6 className="mb-0">Age Categories</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                {Object.entries(reportData.age_categories || {}).map(([key, value]) => (
+                  <div key={key} className="col-md-4 col-sm-6">
+                    <div className="border rounded p-3 text-center">
+                      <h5 className="text-primary mb-1">{value}</h5>
+                      <small className="text-muted text-capitalize">
+                        {key.replace(/_/g, ' ').replace('age', '').trim()}
+                        {key === 'infant' && ' (0-6 mos)'}
+                        {key === 'toddlers' && ' (7 mos-2 y/o)'}
+                        {key === 'preschooler' && ' (3-5 y/o)'}
+                        {key === 'school_age' && ' (6-12 y/o)'}
+                        {key === 'teen_age' && ' (13-17 y/o)'}
+                        {key === 'adult' && ' (18-59 y/o)'}
+                        {key === 'elderly_age' && ' (60 and above)'}
+                      </small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header bg-danger text-white">
+              <h6 className="mb-0">Casualties</h6>
+            </div>
+            <div className="card-body">
+              <div className="row g-3">
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-danger">{reportData.casualties?.dead || 0}</h4>
+                    <small className="text-muted">Dead</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-warning">{reportData.casualties?.injured_ill || 0}</h4>
+                    <small className="text-muted">Injured/Ill</small>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="border rounded p-3 text-center">
+                    <h4 className="text-info">{reportData.casualties?.missing || 0}</h4>
+                    <small className="text-muted">Missing</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    if (filters.type === 'population_detailed') {
+      fetchIncidents();
+    }
+  }, [filters.type]);
 
   return (
-    <div className="container-fluid px-1">
-      {/* Page Header */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-        <div className="flex-grow-1">
+    <div className="container-fluid px-1 fadeIn">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
           <h1 className="h3 mb-1 text-dark">Generate Reports</h1>
-          <p className="text-muted mb-0">
-            Create and download reports for {user?.barangay_name}
-          </p>
-        </div>
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-          <div className="badge px-3 py-2 text-white" style={{
-            backgroundColor: "var(--primary-color)",
-            background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
-          }}>
-            <i className="fas fa-file-alt me-2"></i>
-            <span className="d-none d-sm-inline">Report Type:</span>
-            <span> {filters.type.charAt(0).toUpperCase() + filters.type.slice(1)}</span>
-          </div>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={generateReport}
-            disabled={isActionDisabled()}
-            style={{
-              backgroundColor: "var(--btn-primary-bg)",
-              borderColor: "var(--btn-primary-bg)",
-            }}
-          >
-            <i className="fas fa-sync-alt me-1"></i>
-            <span className="d-none d-sm-inline">Refresh</span>
-            <span className="d-sm-none">Refresh</span>
-          </button>
+          <p className="text-muted mb-0">Reports for {user?.barangay_name}</p>
         </div>
       </div>
 
-      {/* Report Filters */}
       <div className="card shadow border-0 mb-4">
         <div className="card-header py-3" style={{
           backgroundColor: "var(--primary-color)",
@@ -682,37 +975,63 @@ const calculateStats = () => {
         </div>
         <div className="card-body">
           <div className="row g-3">
-            <div className="col-md-4">
+            <div className="col-md-3">
               <label className="form-label small fw-semibold">Report Type</label>
               <select 
                 className="form-select form-select-sm"
                 value={filters.type}
-                onChange={(e) => setFilters({...filters, type: e.target.value})}
-                disabled={isActionDisabled()}
+                onChange={(e) => {
+                  setFilters({...filters, type: e.target.value});
+                  setReportData(null);
+                  setSelectedIncident('all');
+                }}
               >
+                <option value="population_detailed">Detailed Population Report</option>
                 <option value="incidents">Incidents Report</option>
-                <option value="population">Population Data Report</option>
-                <option value="infrastructure">Infrastructure Report</option>
+                <option value="summary">Summary Report</option>
               </select>
             </div>
-            <div className="col-md-4">
+
+            {filters.type === 'population_detailed' && (
+              <div className="col-md-3">
+                <label className="form-label small fw-semibold">Select Incident</label>
+                <select 
+                  className="form-select form-select-sm"
+                  value={selectedIncident}
+                  onChange={(e) => {
+                    setSelectedIncident(e.target.value);
+                    setReportData(null);
+                  }}
+                >
+                  <option value="all">All Incidents</option>
+                  {incidents.map(incident => (
+                    <option key={incident.id} value={incident.id}>
+                      {incident.title} - {new Date(incident.incident_date).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+                <small className="text-muted">
+                  Choose "All Incidents" for aggregated data or select a specific incident
+                </small>
+              </div>
+            )}
+
+            <div className="col-md-3">
               <label className="form-label small fw-semibold">Date From</label>
               <input
                 type="date"
                 className="form-control form-control-sm"
                 value={filters.date_from}
                 onChange={(e) => setFilters({...filters, date_from: e.target.value})}
-                disabled={isActionDisabled()}
               />
             </div>
-            <div className="col-md-4">
+            <div className="col-md-3">
               <label className="form-label small fw-semibold">Date To</label>
               <input
                 type="date"
                 className="form-control form-control-sm"
                 value={filters.date_to}
                 onChange={(e) => setFilters({...filters, date_to: e.target.value})}
-                disabled={isActionDisabled()}
               />
             </div>
           </div>
@@ -720,7 +1039,7 @@ const calculateStats = () => {
             <button 
               className="btn btn-primary btn-sm"
               onClick={generateReport}
-              disabled={isActionDisabled()}
+              disabled={loading}
               style={{
                 backgroundColor: "var(--btn-primary-bg)",
                 borderColor: "var(--btn-primary-bg)",
@@ -740,683 +1059,36 @@ const calculateStats = () => {
             </button>
             
             {reportData && (
-              <>
-                <button 
-                  className="btn btn-success btn-sm"
-                  onClick={exportToPDF}
-                  disabled={isActionDisabled() || exportLoading}
-                >
-                  {exportLoading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2"></span>
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-file-pdf me-2"></i>
-                      Export PDF
-                    </>
-                  )}
-                </button>
-                
-                <button 
-                  className="btn btn-success btn-sm"
-                  onClick={exportToExcel}
-                  disabled={isActionDisabled() || exportLoading}
-                >
-                  <i className="fas fa-file-excel me-2"></i>
-                  Export Excel
-                </button>
-                
-                <button 
-                  className="btn btn-info btn-sm"
-                  onClick={printReport}
-                  disabled={isActionDisabled()}
-                >
-                  <i className="fas fa-print me-2"></i>
-                  Print Report
-                </button>
-              </>
+              <button 
+                className="btn btn-success btn-sm"
+                onClick={exportToPDF}
+                disabled={loading}
+              >
+                <i className="fas fa-file-pdf me-2"></i>
+                Export PDF
+              </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      {reportData && (
-        <div className="row mb-4 g-3">
-          {loading ? (
-            <>
-              {[...Array(4)].map((_, index) => (
-                <StatsCardSkeleton key={index} />
-              ))}
-            </>
-          ) : (
-            <>
-              <div className="col-6 col-md-3">
-                <div className="card stats-card h-100">
-                  <div className="card-body p-3">
-                    <div className="d-flex align-items-center">
-                      <div className="flex-grow-1">
-                        <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "var(--primary-color)" }}>
-                          Total Records
-                        </div>
-                        <div className="h4 mb-0 fw-bold" style={{ color: "var(--primary-color)" }}>
-                          {stats.total}
-                        </div>
-                      </div>
-                      <div className="col-auto">
-                        <i className="fas fa-list fa-lg" style={{ color: "var(--primary-light)", opacity: 0.7 }}></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="card stats-card h-100">
-                  <div className="card-body p-3">
-                    <div className="d-flex align-items-center">
-                      <div className="flex-grow-1">
-                        <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "#198754" }}>
-                          {filters.type === 'incidents' ? 'Resolved' : 
-                           filters.type === 'population' ? 'Families Assisted' : 'Comm Issues'}
-                        </div>
-                        <div className="h4 mb-0 fw-bold" style={{ color: "#198754" }}>
-                          {stats.resolved}
-                        </div>
-                      </div>
-                      <div className="col-auto">
-                        <i className="fas fa-check-circle fa-lg" style={{ color: "#198754", opacity: 0.7 }}></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="card stats-card h-100">
-                  <div className="card-body p-3">
-                    <div className="d-flex align-items-center">
-                      <div className="flex-grow-1">
-                        <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "#17a2b8" }}>
-                          {filters.type === 'incidents' ? 'Investigating' : 
-                           filters.type === 'population' ? 'Displaced Persons' : 'Power Outages'}
-                        </div>
-                        <div className="h4 mb-0 fw-bold" style={{ color: "#17a2b8" }}>
-                          {stats.investigating}
-                        </div>
-                      </div>
-                      <div className="col-auto">
-                        <i className="fas fa-search fa-lg" style={{ color: "#17a2b8", opacity: 0.7 }}></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-6 col-md-3">
-                <div className="card stats-card h-100">
-                  <div className="card-body p-3">
-                    <div className="d-flex align-items-center">
-                      <div className="flex-grow-1">
-                        <div className="text-xs fw-semibold text-uppercase mb-1" style={{ color: "#ffc107" }}>
-                          {filters.type === 'incidents' ? 'Reported' : 
-                           filters.type === 'population' ? 'Total Population' : 'Roads Affected'}
-                        </div>
-                        <div className="h4 mb-0 fw-bold" style={{ color: "#ffc107" }}>
-                          {stats.reported}
-                        </div>
-                      </div>
-                      <div className="col-auto">
-                        <i className="fas fa-chart-bar fa-lg" style={{ color: "#ffc107", opacity: 0.7 }}></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Search and Filter Controls */}
-      {reportData && (
-        <div className="card shadow border-0 mb-4">
-          <div className="card-body p-3">
-            <div className="row g-2 g-md-3 align-items-end">
-              <div className="col-12 col-md-6">
-                <label className="form-label small fw-semibold mb-1">Search Records</label>
-                <div className="input-group input-group-sm">
-                  <span className="input-group-text bg-light border-end-0">
-                    <i className="fas fa-search"></i>
-                  </span>
-                  <input
-                    type="text"
-                    className="form-control border-start-0"
-                    placeholder="Search records..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    disabled={isActionDisabled()}
-                  />
-                  {searchTerm && (
-                    <button
-                      className="btn btn-outline-secondary border-start-0"
-                      type="button"
-                      onClick={() => setSearchTerm("")}
-                      disabled={isActionDisabled()}
-                    >
-                      <i className="fas fa-times"></i>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="col-6 col-md-3">
-                <label className="form-label small fw-semibold mb-1">Items</label>
-                <select
-                  className="form-select form-select-sm"
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  disabled={isActionDisabled()}
-                >
-                  <option value="5">5 per page</option>
-                  <option value="10">10 per page</option>
-                  <option value="20">20 per page</option>
-                  <option value="50">50 per page</option>
-                </select>
-              </div>
-
-              <div className="col-6 col-md-3">
-                <div className="text-center text-md-end">
-                  <small className="text-muted">
-                    Showing <span className="fw-semibold">{Math.min(sortedData.length, 1)}-{Math.min(endIndex, sortedData.length)}</span> of{" "}
-                    <span className="fw-semibold">{sortedData.length}</span> records
-                    {searchTerm && " (filtered)"}
-                  </small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Report Results */}
       {reportData && (
         <div className="card shadow border-0">
           <div className="card-header py-3" style={{
             backgroundColor: "var(--primary-color)",
             background: "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%)",
           }}>
-            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-              <h6 className="card-title mb-0 text-white">
-                <i className="fas fa-chart-bar me-2"></i>
-                Report Results - {filters.type.charAt(0).toUpperCase() + filters.type.slice(1)} Report
-                {!loading && (
-                  <small className="opacity-75 ms-2">
-                    ({sortedData.length} records{searchTerm ? " after filtering" : ""})
-                  </small>
-                )}
-              </h6>
-              <div className="d-flex gap-2">
-                <button
-                  className="btn btn-outline-light btn-sm"
-                  onClick={generateReport}
-                  disabled={isActionDisabled()}
-                  title="Refresh Data"
-                >
-                  <i className="fas fa-sync-alt me-1"></i>
-                  Refresh
-                </button>
-              </div>
-            </div>
+            <h6 className="card-title mb-0 text-white">
+              <i className="fas fa-chart-bar me-2"></i>
+              {getReportTypeLabel()} Report - {getDateRangeText()}
+              {filters.type === 'population_detailed' && selectedIncident !== 'all' && reportData.selected_incident && (
+                <span className="ms-2">- {reportData.selected_incident.title}</span>
+              )}
+            </h6>
           </div>
 
-          <div className="card-body p-0">
-            {loading ? (
-              <div className="table-responsive">
-                <table className="table table-striped table-hover mb-0">
-                  <thead style={{ backgroundColor: "var(--background-light)" }}>
-                    <tr>
-                      <th className="text-center fw-bold" style={{ width: "50px", fontSize: "0.875rem" }}>#</th>
-                      {filters.type === 'incidents' && (
-                        <>
-                          <th style={{ fontSize: "0.875rem" }}>Title</th>
-                          <th style={{ fontSize: "0.875rem" }}>Type</th>
-                          <th style={{ fontSize: "0.875rem" }}>Status</th>
-                          <th style={{ fontSize: "0.875rem" }}>Incident Date</th>
-                          <th style={{ fontSize: "0.875rem" }}>Date Reported</th>
-                        </>
-                      )}
-                      {filters.type === 'population' && (
-                        <>
-                          <th style={{ fontSize: "0.875rem" }}>Incident Title</th>
-                          <th style={{ fontSize: "0.875rem" }}>Type</th>
-                          <th style={{ fontSize: "0.875rem" }}>Population</th>
-                          <th style={{ fontSize: "0.875rem" }}>Displaced</th>
-                          <th style={{ fontSize: "0.875rem" }}>Families Assisted</th>
-                        </>
-                      )}
-                      {filters.type === 'infrastructure' && (
-                        <>
-                          <th style={{ fontSize: "0.875rem" }}>Incident Title</th>
-                          <th style={{ fontSize: "0.875rem" }}>Type</th>
-                          <th style={{ fontSize: "0.875rem" }}>Roads Status</th>
-                          <th style={{ fontSize: "0.875rem" }}>Power Outage</th>
-                          <th style={{ fontSize: "0.875rem" }}>Communication</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...Array(5)].map((_, index) => (
-                      <TableRowSkeleton key={index} />
-                    ))}
-                  </tbody>
-                </table>
-                <div className="text-center py-4">
-                  <div className="spinner-border text-primary me-2" role="status">
-                    <span className="visually-hidden">Loading...</span>
-                  </div>
-                  <span className="text-muted">Loading report data...</span>
-                </div>
-              </div>
-            ) : currentData.length === 0 ? (
-              <div className="text-center py-5">
-                <div className="mb-4">
-                  <i className="fas fa-search fa-4x text-muted opacity-50"></i>
-                </div>
-                <h5 className="text-muted mb-3">
-                  {sortedData.length === 0 ? "No Data Available" : "No Matching Results"}
-                </h5>
-                <p className="text-muted mb-4">
-                  {sortedData.length === 0 ? "No data found for the selected criteria." : "Try adjusting your search criteria."}
-                </p>
-                {searchTerm && (
-                  <button
-                    className="btn btn-outline-secondary"
-                    onClick={() => setSearchTerm("")}
-                    disabled={isActionDisabled()}
-                  >
-                    <i className="fas fa-times me-2"></i>Clear Search
-                  </button>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="table-responsive">
-                  <table className="table table-striped table-hover mb-0">
-                    <thead style={{ backgroundColor: "var(--background-light)" }}>
-                      <tr>
-                        <th className="text-center fw-bold" style={{ width: "50px", fontSize: "0.875rem" }}>#</th>
-                        
-                        {/* Incidents Report Headers - Responsive */}
-                        {filters.type === 'incidents' && (
-                          <>
-                            <th style={{ width: "180px", fontSize: "0.875rem" }}>
-                              <button
-                                className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                                onClick={() => handleSort("title")}
-                                disabled={isActionDisabled()}
-                              >
-                                <span className="d-flex align-items-center justify-content-between">
-                                  <span className="text-truncate">Title</span>
-                                  <i className={`ms-1 ${getSortIcon("title")}`}></i>
-                                </span>
-                              </button>
-                            </th>
-                            <th style={{ width: "100px", fontSize: "0.875rem" }}>
-                              <button
-                                className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                                onClick={() => handleSort("incident_type")}
-                                disabled={isActionDisabled()}
-                              >
-                                <span className="d-flex align-items-center justify-content-between">
-                                  <span className="text-truncate">Type</span>
-                                  <i className={`ms-1 ${getSortIcon("incident_type")}`}></i>
-                                </span>
-                              </button>
-                            </th>
-                            <th style={{ width: "90px", fontSize: "0.875rem" }}>
-                              <button
-                                className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                                onClick={() => handleSort("status")}
-                                disabled={isActionDisabled()}
-                              >
-                                <span className="d-flex align-items-center justify-content-between">
-                                  <span className="text-truncate">Status</span>
-                                  <i className={`ms-1 ${getSortIcon("status")}`}></i>
-                                </span>
-                              </button>
-                            </th>
-                            <th style={{ width: "130px", fontSize: "0.875rem" }}>
-                              <button
-                                className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                                onClick={() => handleSort("incident_date")}
-                                disabled={isActionDisabled()}
-                              >
-                                <span className="d-flex align-items-center justify-content-between">
-                                  <span className="text-truncate d-none d-lg-inline">Incident Date</span>
-                                  <span className="text-truncate d-lg-none">Incident</span>
-                                  <i className={`ms-1 ${getSortIcon("incident_date")}`}></i>
-                                </span>
-                              </button>
-                            </th>
-                            <th style={{ width: "130px", fontSize: "0.875rem" }}>
-                              <button
-                                className="btn btn-link p-0 border-0 text-decoration-none text-dark fw-semibold text-start w-100"
-                                onClick={() => handleSort("created_at")}
-                                disabled={isActionDisabled()}
-                              >
-                                <span className="d-flex align-items-center justify-content-between">
-                                  <span className="text-truncate d-none d-lg-inline">Date Reported</span>
-                                  <span className="text-truncate d-lg-none">Reported</span>
-                                  <i className={`ms-1 ${getSortIcon("created_at")}`}></i>
-                                </span>
-                              </button>
-                            </th>
-                          </>
-                        )}
-
-                        {/* Population Data Report Headers */}
-                        {filters.type === 'population' && (
-                          <>
-                            <th style={{ fontSize: "0.875rem" }}>Incident Title</th>
-                            <th style={{ fontSize: "0.875rem" }}>Type</th>
-                            <th style={{ fontSize: "0.875rem" }}>Population</th>
-                            <th style={{ fontSize: "0.875rem" }}>Displaced</th>
-                            <th style={{ fontSize: "0.875rem" }}>Families Assisted</th>
-                          </>
-                        )}
-
-                        {/* Infrastructure Report Headers */}
-                        {filters.type === 'infrastructure' && (
-                          <>
-                            <th style={{ fontSize: "0.875rem" }}>Incident Title</th>
-                            <th style={{ fontSize: "0.875rem" }}>Type</th>
-                            <th style={{ fontSize: "0.875rem" }}>Roads Status</th>
-                            <th style={{ fontSize: "0.875rem" }}>Power Outage</th>
-                            <th style={{ fontSize: "0.875rem" }}>Communication</th>
-                          </>
-                        )}
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {currentData.map((item, index) => (
-                        <tr key={item.id || index} className="align-middle">
-                          <td className="text-center fw-bold text-muted" style={{ fontSize: "0.9rem" }}>
-                            {startIndex + index + 1}
-                          </td>
-
-{/* Incidents Report Data - Responsive */}
-{filters.type === 'incidents' && (
-  <>
-    <td style={{ width: "180px" }}>
-      <strong className="text-truncate d-block" title={item.title}>
-        {item.title || 'No Title'}
-      </strong>
-    </td>
-    <td style={{ width: "100px" }}>
-      <span className="text-truncate d-block" title={item.incident_type}>
-        {item.incident_type || 'Unknown Type'}
-      </span>
-    </td>
-    <td style={{ width: "90px" }}>
-      <span className={`badge bg-${
-        item.status === 'Resolved' ? 'success' :
-        item.status === 'Investigating' ? 'warning' : 'info'
-      }`}>
-        <span className="d-none d-sm-inline">{item.status || 'Unknown'}</span>
-        <span className="d-sm-none">
-          {item.status === 'Resolved' ? 'Res' : 
-           item.status === 'Investigating' ? 'Inv' : 'Rep'}
-        </span>
-      </span>
-    </td>
-    <td style={{ width: "130px" }}>
-      <div className="d-flex flex-column">
-        <small className="text-truncate">
-          {item.incident_date ? 
-            formatLocalDate(item.incident_date) : 
-            <span className="text-muted">N/A</span>
-          }
-        </small>
-        <small className="text-muted d-none d-md-block">
-          {item.incident_date ? formatLocalTime(item.incident_date) : ''}
-        </small>
-      </div>
-    </td>
-    <td style={{ width: "130px" }}>
-      <div className="d-flex flex-column">
-        <small className="text-truncate">
-          {item.created_at ? formatLocalDate(item.created_at) : 'N/A'}
-        </small>
-        <small className="text-muted d-none d-md-block">
-          {item.created_at ? formatLocalTime(item.created_at) : ''}
-        </small>
-      </div>
-    </td>
-  </>
-)}
-
-                          {/* Population Data Report Data */}
-                          {filters.type === 'population' && (
-                            <>
-                              <td>
-                                <strong>{item.incident_title || 'No Title'}</strong>
-                              </td>
-                              <td>
-                                <span className="badge bg-light text-dark">
-                                  {item.incident_type || 'Unknown Type'}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={item.total_population > 0 ? "fw-bold text-primary" : "text-muted"}>
-                                  {formatNumber(item.total_population)}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={item.displaced_persons > 0 ? "fw-bold text-warning" : "text-muted"}>
-                                  {formatNumber(item.displaced_persons)}
-                                </span>
-                              </td>
-                              <td>
-                                <span className={item.families_assisted > 0 ? "fw-bold text-success" : "text-muted"}>
-                                  {formatNumber(item.families_assisted)}
-                                </span>
-                              </td>
-                            </>
-                          )}
-
-                          {/* Infrastructure Report Data */}
-                          {filters.type === 'infrastructure' && (
-                            <>
-                              <td>
-                                <strong>{item.incident_title || 'No Title'}</strong>
-                              </td>
-                              <td>
-                                <span className="badge bg-light text-dark">
-                                  {item.incident_type || 'Unknown Type'}
-                                </span>
-                              </td>
-                              <td>
-                                {item.roads_bridges_status ? (
-                                  <span className="badge bg-warning">{item.roads_bridges_status}</span>
-                                ) : (
-                                  <span className="text-muted">No issue</span>
-                                )}
-                                {item.roads_remarks && (
-                                  <>
-                                    <br />
-                                    <small className="text-muted">{item.roads_remarks}</small>
-                                  </>
-                                )}
-                              </td>
-                              <td>
-                                {item.power_outage_time ? (
-                                  <div>
-                                    <span className="badge bg-danger">Outage</span>
-                                    <br />
-                                    <small className="text-muted">
-                                      Out: {new Date(item.power_outage_time).toLocaleString()}
-                                      {item.power_restored_time && (
-                                        <>
-                                          <br />
-                                          Restored: {new Date(item.power_restored_time).toLocaleString()}
-                                        </>
-                                      )}
-                                    </small>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted">Normal</span>
-                                )}
-                              </td>
-                              <td>
-                                {item.communication_interruption_time ? (
-                                  <div>
-                                    <span className="badge bg-info">Interrupted</span>
-                                    <br />
-                                    <small className="text-muted">
-                                      Down: {new Date(item.communication_interruption_time).toLocaleString()}
-                                      {item.communication_restored_time && (
-                                        <>
-                                          <br />
-                                          Restored: {new Date(item.communication_restored_time).toLocaleString()}
-                                        </>
-                                      )}
-                                    </small>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted">Normal</span>
-                                )}
-                              </td>
-                            </>
-                          )}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="card-footer bg-white border-top-0 py-3">
-                    <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-                      <div className="text-center text-md-start">
-                        <small className="text-muted">
-                          Showing <span className="fw-semibold">{startIndex + 1}-{Math.min(endIndex, sortedData.length)}</span> of{" "}
-                          <span className="fw-semibold">{sortedData.length}</span> entries
-                        </small>
-                      </div>
-
-                      <div className="d-flex flex-column flex-sm-row align-items-center gap-2">
-                        <div className="d-flex gap-1">
-                          <button
-                            className="btn btn-sm pagination-btn"
-                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1 || isActionDisabled()}
-                            style={{
-                              backgroundColor: "transparent",
-                              borderColor: "var(--primary-color)",
-                              color: "var(--primary-color)",
-                              minWidth: "80px",
-                            }}
-                          >
-                            <i className="fas fa-chevron-left me-1 d-none d-sm-inline"></i>
-                            <span className="d-none d-sm-inline">Previous</span>
-                            <span className="d-sm-none">Prev</span>
-                          </button>
-
-                          <div className="d-none d-md-flex gap-1">
-                            {Array.from({ length: totalPages }, (_, i) => i + 1)
-                              .filter((page) => {
-                                if (totalPages <= 7) return true;
-                                if (page === 1 || page === totalPages) return true;
-                                if (Math.abs(page - currentPage) <= 1) return true;
-                                return false;
-                              })
-                              .map((page, index, array) => {
-                                const showEllipsis = index > 0 && page - array[index - 1] > 1;
-                                return (
-                                  <React.Fragment key={page}>
-                                    {showEllipsis && <span className="px-2 text-muted">...</span>}
-                                    <button
-                                      className={`btn btn-sm pagination-page-btn ${currentPage === page ? "active" : ""}`}
-                                      onClick={() => setCurrentPage(page)}
-                                      disabled={isActionDisabled()}
-                                      style={
-                                        currentPage === page
-                                          ? {
-                                              backgroundColor: "var(--btn-primary-bg)",
-                                              borderColor: "var(--btn-primary-bg)",
-                                              minWidth: "40px",
-                                              color: "white",
-                                            }
-                                          : {
-                                              backgroundColor: "transparent",
-                                              borderColor: "var(--primary-color)",
-                                              color: "var(--primary-color)",
-                                              minWidth: "40px",
-                                            }
-                                      }
-                                    >
-                                      {page}
-                                    </button>
-                                  </React.Fragment>
-                                );
-                              })}
-                          </div>
-
-                          <div className="d-md-none d-flex align-items-center px-3">
-                            <small className="text-muted">
-                              Page <span className="fw-bold">{currentPage}</span> of <span className="fw-bold">{totalPages}</span>
-                            </small>
-                          </div>
-
-                          <button
-                            className="btn btn-sm pagination-btn"
-                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages || isActionDisabled()}
-                            style={{
-                              backgroundColor: "transparent",
-                              borderColor: "var(--primary-color)",
-                              color: "var(--primary-color)",
-                              minWidth: "80px",
-                            }}
-                          >
-                            <span className="d-none d-sm-inline">Next</span>
-                            <span className="d-sm-none">Next</span>
-                            <i className="fas fa-chevron-right ms-1 d-none d-sm-inline"></i>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Global Action Lock Overlay */}
-      {(actionLock || exportLoading) && (
-        <div
-          className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
-          style={{
-            backgroundColor: "rgba(0, 0, 0, 0.1)",
-            zIndex: 9999,
-            pointerEvents: "none",
-          }}
-        >
-          <div className="bg-white rounded p-3 shadow-sm d-flex align-items-center">
-            <div className="spinner-border text-primary me-2" role="status">
-              <span className="visually-hidden">Processing...</span>
-            </div>
-            <span className="text-muted">
-              {exportLoading ? "Exporting..." : "Processing action..."}
-            </span>
+          <div className="card-body">
+            {renderReport()}
           </div>
         </div>
       )}

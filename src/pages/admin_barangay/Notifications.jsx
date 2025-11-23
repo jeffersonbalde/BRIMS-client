@@ -331,7 +331,7 @@ const Notifications = () => {
   );
 
   return (
-    <div className="container-fluid px-1">
+    <div className="container-fluid px-1 fadeIn">
       {/* Page Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <div className="flex-grow-1">

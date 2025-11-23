@@ -1,32 +1,29 @@
-// components/incident/IncidentReportModal.jsx
-import React, { useState, useEffect, useRef } from "react";
+// components/admin/AdminIncidentEditModal.jsx
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { showAlert, showToast } from "../../../services/notificationService";
 import Portal from "../../../components/Portal";
 
-const IncidentReportModal = ({ onClose, onSuccess }) => {
-  const { token } = useAuth();
+const AdminIncidentEditModal = ({ incident, onClose, onSuccess }) => {
+  const { token, user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    // Basic Incident Information
-    incident_type: "Flood",
+    incident_type: "",
     title: "",
     description: "",
     location: "",
     barangay: "",
     purok: "",
-    incident_date: new Date().toISOString().slice(0, 16),
-    severity: "Medium",
-
-    // Families Data
+    incident_date: "",
+    severity: "",
+    status: "",
     families: [],
-
-    // Summary for quick entry
     total_families: 1,
   });
 
-  // Complete dropdown data from Excel third tab - REMOVED assistance_given
+  // Complete dropdown data matching Excel structure
   const dropdownData = {
     incident_types: ["Flood", "Landslide", "Fire", "Earthquake", "Vehicular"],
     barangays: [
@@ -106,21 +103,74 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
     ],
   };
 
-  // Initialize families based on total_families
+  // Load incident data with families
   useEffect(() => {
-    const familiesCount = parseInt(form.total_families) || 1;
-    const currentFamilies = form.families || [];
+    const loadIncidentData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          `${import.meta.env.VITE_LARAVEL_API}/incidents/${
+            incident.id
+          }/with-families`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
 
-    if (familiesCount > currentFamilies.length) {
-      // Add new families
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.incident) {
+            const incidentData = data.incident;
+
+            // Format the incident date for datetime-local input
+            const incidentDate = new Date(incidentData.incident_date);
+            const formattedDate = incidentDate.toISOString().slice(0, 16);
+
+            setForm({
+              incident_type: incidentData.incident_type || "",
+              title: incidentData.title || "",
+              description: incidentData.description || "",
+              location: incidentData.location || "",
+              barangay: incidentData.barangay || "",
+              purok: incidentData.purok || "",
+              incident_date: formattedDate,
+              severity: incidentData.severity || "",
+              status: incidentData.status || "Reported",
+              families: incidentData.families || [],
+              total_families: incidentData.families?.length || 1,
+            });
+          }
+        } else {
+          throw new Error("Failed to load incident data");
+        }
+      } catch (error) {
+        console.error("Error loading incident data:", error);
+        showAlert.error("Error", "Failed to load incident details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadIncidentData();
+  }, [incident.id, token]);
+
+  // Initialize families based on total_families when form data is loaded
+  useEffect(() => {
+    if (!loading && form.families.length === 0 && form.total_families > 0) {
+      const familiesCount = parseInt(form.total_families) || 1;
       const newFamilies = [];
-      for (let i = currentFamilies.length; i < familiesCount; i++) {
+
+      for (let i = 0; i < familiesCount; i++) {
         newFamilies.push({
           family_number: i + 1,
-          family_size: 1, // Start with 1 member per family
+          family_size: 1,
           evacuation_center: "",
           alternative_location: "",
-          // REMOVED: assistance_given and remarks for barangay side
+          assistance_given: "",
+          remarks: "",
           members: [
             {
               last_name: "",
@@ -136,22 +186,14 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
               casualty: "",
               displaced: "N",
               pwd_type: "",
+              remarks: "",
             },
           ],
         });
       }
-      setForm((prev) => ({
-        ...prev,
-        families: [...currentFamilies, ...newFamilies],
-      }));
-    } else if (familiesCount < currentFamilies.length) {
-      // Remove extra families
-      setForm((prev) => ({
-        ...prev,
-        families: currentFamilies.slice(0, familiesCount),
-      }));
+      setForm((prev) => ({ ...prev, families: newFamilies }));
     }
-  }, [form.total_families]);
+  }, [loading, form.total_families, form.families.length]);
 
   const handleBasicInfoChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -205,6 +247,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                   casualty: "",
                   displaced: "N",
                   pwd_type: "",
+                  remarks: "",
                 },
               ],
               family_size: family.members.length + 1,
@@ -215,6 +258,11 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
   };
 
   const removeFamilyMember = (familyIndex, memberIndex) => {
+    if (form.families[familyIndex].members.length <= 1) {
+      showToast.error("Cannot remove the last family member");
+      return;
+    }
+
     setForm((prev) => ({
       ...prev,
       families: prev.families.map((family, index) =>
@@ -333,26 +381,8 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
     return true;
   };
 
-  const validateField = (field, value, fieldName) => {
-    if (!value || value.toString().trim() === "") {
-      return `${fieldName} is required`;
-    }
-
-    if (field === "age") {
-      const age = parseInt(value);
-      if (isNaN(age)) return "Age must be a number";
-      if (age < 0 || age > 120) return "Age must be between 0 and 120";
-    }
-
-    return null;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
 
     const totalPersons = form.families.reduce(
       (total, family) => total + family.members.length,
@@ -360,10 +390,10 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
     );
 
     const confirmation = await showAlert.confirm(
-      "Confirm Incident Report",
-      `Are you sure you want to report this incident?\n\nSummary:\n• ${form.total_families} families affected\n• ${totalPersons} total persons\n• Location: ${form.location}, ${form.barangay}\n• Type: ${form.incident_type}`,
-      "Yes, Report Incident",
-      "Review Details"
+      "Confirm Incident Update",
+      `Are you sure you want to update this incident?\n\nSummary:\n• ${form.total_families} families affected\n• ${totalPersons} total persons\n• Location: ${form.location}, ${form.barangay}\n• Type: ${form.incident_type}`,
+      "Yes, Update Incident",
+      "Review Changes"
     );
 
     if (!confirmation.isConfirmed) return;
@@ -372,8 +402,8 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
 
     try {
       showAlert.processing(
-        "Reporting Incident",
-        "Please wait while we save your incident report..."
+        "Updating Incident",
+        "Please wait while we update the incident report..."
       );
 
       const submissionData = {
@@ -381,16 +411,15 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
         incident_date: new Date(form.incident_date).toISOString(),
         affected_families: form.families.length,
         affected_individuals: totalPersons,
-        // Remove temporary fields
         total_families: undefined,
       };
 
-      console.log("Submitting data:", submissionData); // Debug log
-
       const response = await fetch(
-        `${import.meta.env.VITE_LARAVEL_API}/incidents/with-families`,
+        `${import.meta.env.VITE_LARAVEL_API}/incidents/${
+          incident.id
+        }/with-families`,
         {
-          method: "POST",
+          method: "PUT",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -400,19 +429,12 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
       );
 
       const data = await response.json();
-      console.log("Response:", data); // Debug log
       showAlert.close();
 
       if (response.ok) {
-        await showAlert.customSuccess(
-          "Incident Reported Successfully!",
-          `Your incident has been reported with detailed family information.`,
-          "Okay, Got It"
-        );
+        showToast.success("Incident updated successfully!");
         onSuccess();
       } else {
-        console.error("Server error details:", data); // Debug log
-
         if (response.status === 422 && data.errors) {
           const errorMessages = Object.values(data.errors).flat();
           const errorMessage =
@@ -426,14 +448,12 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
           );
           showAlert.error("Validation Error", errorMessages.join("\n"));
         } else {
-          // Show more detailed error message
           const errorDetail =
             data.error || data.message || "Unknown error occurred";
-          showAlert.error("Error", `Failed to report incident: ${errorDetail}`);
+          showAlert.error("Error", `Failed to update incident: ${errorDetail}`);
         }
       }
     } catch (error) {
-      console.error("Network error:", error); // Debug log
       showAlert.close();
       showAlert.error(
         "Connection Error",
@@ -473,6 +493,131 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
     setCurrentStep((prev) => prev - 1);
   };
 
+  // Loading state - Replace the current loading state with this
+  if (loading) {
+    return (
+      <Portal>
+        <div
+          className="modal fade show d-block"
+          style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-xl">
+            <div
+              className="modal-content border-0"
+              style={{
+                boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+              }}
+            >
+              {/* Header Skeleton */}
+              <div
+                className="modal-header border-0 text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)",
+                }}
+              >
+                <div className="d-flex align-items-center w-100">
+                  <div
+                    className="skeleton-box me-2"
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "4px",
+                    }}
+                  ></div>
+                  <div
+                    className="skeleton-line flex-grow-1"
+                    style={{ height: "24px", borderRadius: "4px" }}
+                  ></div>
+                  <div
+                    className="skeleton-box"
+                    style={{
+                      width: "20px",
+                      height: "20px",
+                      borderRadius: "4px",
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Body Skeleton */}
+              <div className="modal-body bg-light p-4">
+                <div className="row g-3">
+                  {/* Basic Info Skeleton */}
+                  <div className="col-12">
+                    <div
+                      className="skeleton-line mb-3"
+                      style={{
+                        height: "20px",
+                        width: "200px",
+                        borderRadius: "4px",
+                      }}
+                    ></div>
+                  </div>
+
+                  {/* Form Fields Skeleton */}
+                  {[...Array(8)].map((_, index) => (
+                    <div key={index} className="col-12 col-md-6">
+                      <div
+                        className="skeleton-line mb-2"
+                        style={{
+                          height: "16px",
+                          width: "120px",
+                          borderRadius: "4px",
+                        }}
+                      ></div>
+                      <div
+                        className="skeleton-line"
+                        style={{ height: "38px", borderRadius: "4px" }}
+                      ></div>
+                    </div>
+                  ))}
+
+                  {/* Description Skeleton */}
+                  <div className="col-12">
+                    <div
+                      className="skeleton-line mb-2"
+                      style={{
+                        height: "16px",
+                        width: "100px",
+                        borderRadius: "4px",
+                      }}
+                    ></div>
+                    <div
+                      className="skeleton-line"
+                      style={{ height: "80px", borderRadius: "4px" }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Skeleton */}
+              <div className="modal-footer border-top bg-white">
+                <div
+                  className="skeleton-line"
+                  style={{
+                    height: "38px",
+                    width: "100px",
+                    borderRadius: "4px",
+                  }}
+                ></div>
+                <div
+                  className="skeleton-line"
+                  style={{
+                    height: "38px",
+                    width: "120px",
+                    borderRadius: "4px",
+                  }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Portal>
+    );
+  }
+
+  // Render methods
   const renderStep1 = () => (
     <div className="row g-3">
       <div className="col-12">
@@ -621,7 +766,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
             Family Information ({form.families.length} families)
           </h6>
           <p className="text-muted small">
-            Please provide detailed information for each affected family member
+            Update detailed information for each affected family member
           </p>
         </div>
       </div>
@@ -644,7 +789,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
             </div>
 
             <div className="card-body">
-              {/* Family-level information - REMOVED assistance_given and remarks */}
+              {/* Family-level information */}
               <div className="row g-3 mb-4">
                 <div className="col-12 col-md-4">
                   <label className="form-label fw-semibold">Family Size</label>
@@ -661,6 +806,136 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                     className="form-control"
                     min="1"
                     disabled
+                  />
+                </div>
+
+                {/* REMOVED: Assistance Given dropdown for barangay side */}
+              </div>
+
+              {/* Family Assistance Checkboxes - ADMIN ONLY */}
+              <div className="row g-3 mb-4">
+                <div className="col-12">
+                  <label className="form-label fw-semibold">
+                    Family Assistance Received (Admin Only)
+                  </label>
+                  <div className="row g-2">
+                    <div className="col-12 col-md-6 col-lg-4">
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={family.assistance_received || false}
+                          onChange={(e) =>
+                            handleFamilyChange(
+                              familyIndex,
+                              "assistance_received",
+                              e.target.checked
+                            )
+                          }
+                        />
+                        <label className="form-check-label fw-semibold text-success">
+                          Assistance Received
+                        </label>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6 col-lg-4">
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={family.food_assistance || false}
+                          onChange={(e) =>
+                            handleFamilyChange(
+                              familyIndex,
+                              "food_assistance",
+                              e.target.checked
+                            )
+                          }
+                        />
+                        <label className="form-check-label">
+                          Food Assistance
+                        </label>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6 col-lg-4">
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={family.non_food_assistance || false}
+                          onChange={(e) =>
+                            handleFamilyChange(
+                              familyIndex,
+                              "non_food_assistance",
+                              e.target.checked
+                            )
+                          }
+                        />
+                        <label className="form-check-label">
+                          Non-Food Assistance
+                        </label>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6 col-lg-4">
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={family.shelter_assistance || false}
+                          onChange={(e) =>
+                            handleFamilyChange(
+                              familyIndex,
+                              "shelter_assistance",
+                              e.target.checked
+                            )
+                          }
+                        />
+                        <label className="form-check-label">
+                          Shelter Assistance
+                        </label>
+                      </div>
+                    </div>
+                    <div className="col-12 col-md-6 col-lg-4">
+                      <div className="form-check">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={family.medical_assistance || false}
+                          onChange={(e) =>
+                            handleFamilyChange(
+                              familyIndex,
+                              "medical_assistance",
+                              e.target.checked
+                            )
+                          }
+                        />
+                        <label className="form-check-label">
+                          Medical Assistance
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Family Other Remarks */}
+              <div className="row g-3 mb-4">
+                <div className="col-12">
+                  <label className="form-label fw-semibold">
+                    Family Other Remarks (Admin Only)
+                  </label>
+                  <textarea
+                    value={family.other_remarks || ""}
+                    onChange={(e) =>
+                      handleFamilyChange(
+                        familyIndex,
+                        "other_remarks",
+                        e.target.value
+                      )
+                    }
+                    className="form-control"
+                    rows="2"
+                    placeholder="Additional remarks for the family..."
                   />
                 </div>
               </div>
@@ -693,10 +968,9 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                       <button
                         type="button"
                         className="btn btn-sm btn-outline-danger"
-                        onClick={() => {
-                          removeFamilyMember(familyIndex, memberIndex);
-                          updateFamilySize(familyIndex);
-                        }}
+                        onClick={() =>
+                          removeFamilyMember(familyIndex, memberIndex)
+                        }
                       >
                         <i className="fas fa-times"></i> Remove
                       </button>
@@ -711,7 +985,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                       </label>
                       <input
                         type="text"
-                        value={member.last_name}
+                        value={member.last_name || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -738,7 +1012,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                       </label>
                       <input
                         type="text"
-                        value={member.first_name}
+                        value={member.first_name || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -765,7 +1039,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                       </label>
                       <input
                         type="text"
-                        value={member.middle_name}
+                        value={member.middle_name || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -784,7 +1058,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         Position in Family *
                       </label>
                       <select
-                        value={member.position_in_family}
+                        value={member.position_in_family || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -817,7 +1091,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         Sex/Gender Identity *
                       </label>
                       <select
-                        value={member.sex_gender_identity}
+                        value={member.sex_gender_identity || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -853,7 +1127,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                       </label>
                       <input
                         type="number"
-                        value={member.age}
+                        value={member.age || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -886,7 +1160,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         Category *
                       </label>
                       <select
-                        value={member.category}
+                        value={member.category || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -919,7 +1193,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         Civil Status *
                       </label>
                       <select
-                        value={member.civil_status}
+                        value={member.civil_status || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -953,7 +1227,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         Ethnicity *
                       </label>
                       <select
-                        value={member.ethnicity}
+                        value={member.ethnicity || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -986,7 +1260,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         Displaced?
                       </label>
                       <select
-                        value={member.displaced}
+                        value={member.displaced || "N"}
                         onChange={(e) => {
                           handleMemberChange(
                             familyIndex,
@@ -1023,7 +1297,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         </label>
                         <input
                           type="text"
-                          value={family.evacuation_center}
+                          value={family.evacuation_center || ""}
                           onChange={(e) =>
                             handleFamilyChange(
                               familyIndex,
@@ -1042,7 +1316,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         </label>
                         <input
                           type="text"
-                          value={family.alternative_location}
+                          value={family.alternative_location || ""}
                           onChange={(e) =>
                             handleFamilyChange(
                               familyIndex,
@@ -1062,7 +1336,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                         Casualty Status
                       </label>
                       <select
-                        value={member.casualty}
+                        value={member.casualty || ""}
                         onChange={(e) =>
                           handleMemberChange(
                             familyIndex,
@@ -1080,6 +1354,136 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    {/* Individual Assistance Checkboxes - ADMIN ONLY */}
+                    <div className="col-12">
+                      <label className="form-label small fw-semibold">
+                        Individual Assistance (Admin Only)
+                      </label>
+                      <div className="row g-1">
+                        <div className="col-12 col-md-6 col-lg-4">
+                          <div className="form-check">
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={member.assistance_received || false}
+                              onChange={(e) =>
+                                handleMemberChange(
+                                  familyIndex,
+                                  memberIndex,
+                                  "assistance_received",
+                                  e.target.checked
+                                )
+                              }
+                            />
+                            <label className="form-check-label small fw-semibold text-success">
+                              Assistance Received
+                            </label>
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-6 col-lg-4">
+                          <div className="form-check">
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={member.food_assistance || false}
+                              onChange={(e) =>
+                                handleMemberChange(
+                                  familyIndex,
+                                  memberIndex,
+                                  "food_assistance",
+                                  e.target.checked
+                                )
+                              }
+                            />
+                            <label className="form-check-label small">
+                              Food Assistance
+                            </label>
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-6 col-lg-4">
+                          <div className="form-check">
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={member.non_food_assistance || false}
+                              onChange={(e) =>
+                                handleMemberChange(
+                                  familyIndex,
+                                  memberIndex,
+                                  "non_food_assistance",
+                                  e.target.checked
+                                )
+                              }
+                            />
+                            <label className="form-check-label small">
+                              Non-Food Assistance
+                            </label>
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-6 col-lg-4">
+                          <div className="form-check">
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={member.medical_attention || false}
+                              onChange={(e) =>
+                                handleMemberChange(
+                                  familyIndex,
+                                  memberIndex,
+                                  "medical_attention",
+                                  e.target.checked
+                                )
+                              }
+                            />
+                            <label className="form-check-label small">
+                              Medical Attention
+                            </label>
+                          </div>
+                        </div>
+                        <div className="col-12 col-md-6 col-lg-4">
+                          <div className="form-check">
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={member.psychological_support || false}
+                              onChange={(e) =>
+                                handleMemberChange(
+                                  familyIndex,
+                                  memberIndex,
+                                  "psychological_support",
+                                  e.target.checked
+                                )
+                              }
+                            />
+                            <label className="form-check-label small">
+                              Psychological Support
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Individual Other Remarks - ADMIN ONLY */}
+                    <div className="col-12">
+                      <label className="form-label small fw-semibold">
+                        Individual Other Remarks (Admin Only)
+                      </label>
+                      <textarea
+                        value={member.other_remarks || ""}
+                        onChange={(e) =>
+                          handleMemberChange(
+                            familyIndex,
+                            memberIndex,
+                            "other_remarks",
+                            e.target.value
+                          )
+                        }
+                        className="form-control form-control-sm"
+                        rows="2"
+                        placeholder="Additional remarks for this person..."
+                      />
                     </div>
 
                     {/* Vulnerable Groups */}
@@ -1128,7 +1532,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                           PWD Type
                         </label>
                         <select
-                          value={member.pwd_type}
+                          value={member.pwd_type || ""}
                           onChange={(e) =>
                             handleMemberChange(
                               familyIndex,
@@ -1177,8 +1581,8 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
               }}
             >
               <h5 className="modal-title fw-bold">
-                <i className="fas fa-exclamation-triangle me-2"></i>
-                Report New Incident
+                <i className="fas fa-edit me-2"></i>
+                Edit Incident Details
                 <small className="ms-2 opacity-75">
                   Step {currentStep} of 2
                 </small>
@@ -1191,7 +1595,7 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
               ></button>
             </div>
 
-            <form onSubmit={handleSubmit}>
+            <div>
               <div
                 className="modal-body bg-light"
                 style={{ maxHeight: "70vh", overflowY: "auto" }}
@@ -1227,26 +1631,27 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
                       <i className="fas fa-arrow-left me-2"></i> Back
                     </button>
                     <button
-                      type="submit"
+                      type="button"
                       className="btn btn-primary"
+                      onClick={handleSubmit}
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2"></span>
-                          Reporting...
+                          Updating...
                         </>
                       ) : (
                         <>
-                          <i className="fas fa-paper-plane me-2"></i>
-                          Report Incident
+                          <i className="fas fa-save me-2"></i>
+                          Update Incident
                         </>
                       )}
                     </button>
                   </>
                 )}
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
@@ -1254,4 +1659,4 @@ const IncidentReportModal = ({ onClose, onSuccess }) => {
   );
 };
 
-export default IncidentReportModal;
+export default AdminIncidentEditModal;

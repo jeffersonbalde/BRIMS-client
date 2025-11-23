@@ -1,301 +1,861 @@
 // components/incident/IncidentEditModal.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { showAlert, showToast } from '../../../services/notificationService';
 import Portal from '../../../components/Portal';
 
 const IncidentEditModal = ({ incident, onClose, onSuccess }) => {
+  const { token, user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState({
     incident_type: incident.incident_type,
     title: incident.title,
     description: incident.description || '',
     location: incident.location,
-    incident_date: (() => {
-      // Parse the UTC date from backend and convert to local datetime-local format
-      const utcDate = new Date(incident.incident_date);
-      const localDate = new Date(utcDate.getTime() - (utcDate.getTimezoneOffset() * 60000));
-      return localDate.toISOString().slice(0, 16);
-    })(),
+    barangay: incident.barangay,
+    purok: incident.purok || '',
+    incident_date: new Date(incident.incident_date).toISOString().slice(0, 16),
     severity: incident.severity,
     status: incident.status,
-    affected_families: incident.affected_families || '',
-    affected_individuals: incident.affected_individuals || '',
-    casualties: incident.casualties || { dead: 0, injured: 0, missing: 0 },
-    admin_notes: incident.admin_notes || '',
-    response_actions: incident.response_actions || ''
+    families: incident.families || [],
+    total_families: incident.families?.length || 1,
   });
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
-  const formRef = useRef(null);
-  const { token, user } = useAuth();
 
-  // Add the missing getStatusBadge function
-  const getStatusBadge = (status) => {
-    const statusStyles = {
-      Reported: "bg-primary text-white",
-      Investigating: "bg-info text-white",
-      Resolved: "bg-success text-white",
-      Closed: "bg-secondary text-white",
-    };
-    return statusStyles[status] || "bg-secondary text-white";
+  // Dropdown data (same as ReportModal) - REMOVED assistance_given
+  const dropdownData = {
+    incident_types: ["Flood", "Landslide", "Fire", "Earthquake", "Vehicular"],
+    barangays: [
+      "BOGAYO", "BOLISONG", "BOYUGAN East", "BOYUGAN West", "BUALAN", "DIPLO",
+      "GAWIL", "GUSOM", "KITAANG DAGAT", "LANTAWAN", "LIMAMAWAN", "MAHAYAHAY",
+      "PANGI", "PICANAN", "POBLACION", "SALAGMANOK", "SICADE", "SUMINALOM"
+    ],
+    sex_gender_identity: ["Male", "Female", "LGBTQIA+ / Other (self-identified)", "Prefer not to say"],
+    civil_status: ["Single", "Married", "Widowed", "Separated", "Live-In/Cohabiting"],
+    position_in_family: [
+      "Head (Father)", "Head (Mother)", "Head (Solo Parent)", "Head (Single)",
+      "Head (Child)", "Member"
+    ],
+    categories: [
+      "Infant (0-6 mos)", "Toddlers (7 mos- 2 y/o)", "Preschooler (3-5 y/o)",
+      "School Age (6-12 y/o)", "Teen Age (13-17 y/o)", "Adult (18-59 y/o)", "Elderly (60 and above)"
+    ],
+    ethnicity: ["CHRISTIAN", "SUBANEN (IPs)", "MORO"],
+    vulnerable_groups: [
+      "PWD", "Pregnant", "Elderly", "Lactating Mother", "Solo parent",
+      "Indigenous People", "LGBTQIA+ Persons", "Child-Headed Household",
+      "Victim of Gender-Based Violence (GBV)", "4Ps Beneficiaries", "Single Headed Family"
+    ],
+    casualty: ["Dead", "Injured/ill", "Missing"],
+    pwd_types: [
+      "Psychosocial Disability", "Hearing Disability", "Visual Disability",
+      "Orthopedic Disability", "Intellectual Disability", "Speech and Language Disability",
+      "Learning Disability", "Multiple Disability"
+    ]
   };
 
-  // Add getSeverityBadge function as well for consistency
-  const getSeverityBadge = (severity) => {
-    const severityStyles = {
-      Low: "bg-success text-white",
-      Medium: "bg-warning text-dark",
-      High: "bg-danger text-white",
-      Critical: "bg-dark text-white",
-    };
-    return severityStyles[severity] || "bg-secondary text-white";
+  // Family management functions
+  useEffect(() => {
+    const familiesCount = parseInt(form.total_families) || 1;
+    const currentFamilies = form.families || [];
+
+    if (familiesCount > currentFamilies.length) {
+      const newFamilies = [];
+      for (let i = currentFamilies.length; i < familiesCount; i++) {
+        newFamilies.push({
+          family_number: i + 1,
+          family_size: 1,
+          evacuation_center: "",
+          alternative_location: "",
+          // REMOVED: assistance_given and remarks for barangay side
+          members: [{
+            last_name: "",
+            first_name: "",
+            middle_name: "",
+            position_in_family: "",
+            sex_gender_identity: "",
+            age: "",
+            category: "",
+            civil_status: "",
+            ethnicity: "",
+            vulnerable_groups: [],
+            casualty: "",
+            displaced: "N",
+            pwd_type: "",
+          }]
+        });
+      }
+      setForm(prev => ({ ...prev, families: [...currentFamilies, ...newFamilies] }));
+    } else if (familiesCount < currentFamilies.length) {
+      setForm(prev => ({ ...prev, families: currentFamilies.slice(0, familiesCount) }));
+    }
+  }, [form.total_families]);
+
+  const handleBasicInfoChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  // Check if form has changes
-  const checkFormChanges = (currentForm) => {
-    const originalForm = {
-      incident_type: incident.incident_type,
-      title: incident.title,
-      description: incident.description || '',
-      location: incident.location,
-      incident_date: (() => {
-        const utcDate = new Date(incident.incident_date);
-        const localDate = new Date(utcDate.getTime() - (utcDate.getTimezoneOffset() * 60000));
-        return localDate.toISOString().slice(0, 16);
-      })(),
-      severity: incident.severity,
-      status: incident.status,
-      affected_families: incident.affected_families || '',
-      affected_individuals: incident.affected_individuals || '',
-      casualties: incident.casualties || { dead: 0, injured: 0, missing: 0 },
-      admin_notes: incident.admin_notes || '',
-      response_actions: incident.response_actions || ''
-    };
-    return JSON.stringify(currentForm) !== JSON.stringify(originalForm);
+  const handleFamilyChange = (familyIndex, field, value) => {
+    setForm(prev => ({
+      ...prev,
+      families: prev.families.map((family, index) =>
+        index === familyIndex ? { ...family, [field]: value } : family
+      ),
+    }));
+  };
+
+  const handleMemberChange = (familyIndex, memberIndex, field, value) => {
+    setForm(prev => ({
+      ...prev,
+      families: prev.families.map((family, fIndex) =>
+        fIndex === familyIndex
+          ? {
+              ...family,
+              members: family.members.map((member, mIndex) =>
+                mIndex === memberIndex ? { ...member, [field]: value } : member
+              ),
+            }
+          : family
+      ),
+    }));
+  };
+
+  const addFamilyMember = (familyIndex) => {
+    setForm(prev => ({
+      ...prev,
+      families: prev.families.map((family, index) =>
+        index === familyIndex
+          ? {
+              ...family,
+              members: [
+                ...family.members,
+                {
+                  last_name: "",
+                  first_name: "",
+                  middle_name: "",
+                  position_in_family: "",
+                  sex_gender_identity: "",
+                  age: "",
+                  category: "",
+                  civil_status: "",
+                  ethnicity: "",
+                  vulnerable_groups: [],
+                  casualty: "",
+                  displaced: "N",
+                  pwd_type: "",
+                },
+              ],
+              family_size: family.members.length + 1,
+            }
+          : family
+      ),
+    }));
+  };
+
+  const removeFamilyMember = (familyIndex, memberIndex) => {
+    setForm(prev => ({
+      ...prev,
+      families: prev.families.map((family, index) =>
+        index === familyIndex
+          ? {
+              ...family,
+              members: family.members.filter((_, mIndex) => mIndex !== memberIndex),
+              family_size: family.members.length - 1,
+            }
+          : family
+      ),
+    }));
+  };
+
+  const updateFamilySize = (familyIndex) => {
+    setForm(prev => ({
+      ...prev,
+      families: prev.families.map((family, index) =>
+        index === familyIndex
+          ? { ...family, family_size: family.members.length }
+          : family
+      ),
+    }));
   };
 
   const validateForm = () => {
-    const errors = {};
+    // Basic incident information validation
+    const basicFields = [
+      { field: "title", label: "Incident Title" },
+      { field: "location", label: "Location" },
+      { field: "barangay", label: "Barangay" },
+      { field: "incident_type", label: "Incident Type" },
+    ];
 
-    // Check if affected numbers are at least 1
-    if (!form.affected_families || parseInt(form.affected_families) < 1) {
-      errors.affected_families = 'Please enter at least 1 affected family';
-    }
-
-    if (!form.affected_individuals || parseInt(form.affected_individuals) < 1) {
-      errors.affected_individuals = 'Please enter at least 1 affected individual';
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  // Validate form before submission
-  if (!validateForm()) {
-    showAlert.error('Validation Error', 'Please check the form for errors');
-    return;
-  }
-
-  // Show confirmation dialog before submitting
-// Show confirmation dialog before submitting
-const confirmation = await showAlert.confirm(
-  'Confirm Incident Update',
-  `Are you sure you want to update this incident?\n\nUpdated Details:\n• Type: ${form.incident_type}\n• Title: ${form.title}\n• Location: ${form.location}\n• Severity: ${form.severity}\n• Status: ${form.status}\n\nThis will update the incident record and notify relevant parties.`,
-  'Yes, Update Incident',
-  'Review Changes'
-);
-
-  if (!confirmation.isConfirmed) {
-    return; // User cancelled the confirmation
-  }
-
-  setIsSubmitting(true);
-
-  try {
-    // Show processing SweetAlert - don't await it
-    showAlert.processing(
-      'Updating Incident',
-      'Please wait while we update the incident report...'
+    const missingBasicFields = basicFields.filter(
+      ({ field, label }) => !form[field] || form[field].toString().trim() === ""
     );
 
-    // Convert datetime-local to ISO string for backend
-    const localDate = new Date(form.incident_date);
-    const isoDate = localDate.toISOString();
-
-    // Prepare data for submission
-    const submissionData = {
-      ...form,
-      incident_date: isoDate, // Send as ISO string to backend
-      affected_families: parseInt(form.affected_families) || 0,
-      affected_individuals: parseInt(form.affected_individuals) || 0,
-      casualties: {
-        dead: parseInt(form.casualties.dead) || 0,
-        injured: parseInt(form.casualties.injured) || 0,
-        missing: parseInt(form.casualties.missing) || 0
-      }
-    };
-
-    const response = await fetch(`${import.meta.env.VITE_LARAVEL_API}/incidents/${incident.id}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(submissionData),
-    });
-
-    const data = await response.json();
-
-    // Close the processing alert
-    showAlert.close();
-
-    if (response.ok) {
-      showToast.success('Incident updated successfully!');
-      setHasUnsavedChanges(false);
-      onSuccess();
-    } else {
-      showAlert.error('Error', data.message || 'Failed to update incident');
-    }
-  } catch (error) {
-    // Close the processing alert on error
-    showAlert.close();
-    showAlert.error('Error', 'Failed to connect to server');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setForm(prev => {
-      const newForm = { ...prev, [name]: value };
-      setHasUnsavedChanges(checkFormChanges(newForm));
-      
-      // Clear error when user starts typing
-      if (formErrors[name]) {
-        setFormErrors(prev => ({ ...prev, [name]: '' }));
-      }
-      
-      return newForm;
-    });
-  };
-
-  const handleCasualtyChange = (field, value) => {
-    setForm(prev => {
-      const newForm = {
-        ...prev,
-        casualties: {
-          ...prev.casualties,
-          [field]: value
-        }
-      };
-      setHasUnsavedChanges(checkFormChanges(newForm));
-      return newForm;
-    });
-  };
-
-  const handleBackdropClick = async (e) => {
-    if (e.target === e.currentTarget && !isSubmitting) {
-      await handleCloseAttempt();
-    }
-  };
-
-  const handleEscapeKey = async (e) => {
-    if (e.key === 'Escape' && !isSubmitting) {
-      e.preventDefault();
-      await handleCloseAttempt();
-    }
-  };
-
-  const handleCloseAttempt = async () => {
-    if (hasUnsavedChanges) {
-      const result = await showAlert.confirm(
-        'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to close without saving?',
-        'Yes, Close',
-        'Continue Editing'
+    if (missingBasicFields.length > 0) {
+      const fieldNames = missingBasicFields.map((f) => f.label).join(", ");
+      showAlert.error(
+        "Missing Basic Information",
+        `Please fill in the following required fields:\n\n${fieldNames}`
       );
-      
-      if (result.isConfirmed) {
-        onClose();
+      return false;
+    }
+
+    // Validate each family and member
+    for (const family of form.families) {
+      // Check if family has at least 1 member
+      if (!family.members || family.members.length === 0) {
+        showAlert.error(
+          "Family Member Required",
+          `Family ${family.family_number} must have at least 1 member. Please add family members.`
+        );
+        return false;
       }
-    } else {
-      onClose();
+
+      // Validate each family member
+      for (const [memberIndex, member] of family.members.entries()) {
+        const memberNumber = memberIndex + 1;
+
+        // Define required fields for each member
+        const requiredMemberFields = [
+          { field: "last_name", label: "Last Name" },
+          { field: "first_name", label: "First Name" },
+          { field: "position_in_family", label: "Position in Family" },
+          { field: "sex_gender_identity", label: "Sex/Gender Identity" },
+          { field: "age", label: "Age" },
+          { field: "category", label: "Category" },
+          { field: "civil_status", label: "Civil Status" },
+          { field: "ethnicity", label: "Ethnicity" },
+        ];
+
+        // Check for missing required fields
+        const missingFields = requiredMemberFields.filter(
+          ({ field, label }) =>
+            !member[field] || member[field].toString().trim() === ""
+        );
+
+        if (missingFields.length > 0) {
+          const fieldNames = missingFields.map((f) => f.label).join(", ");
+          showAlert.error(
+            "Missing Family Member Information",
+            `Family ${family.family_number}, Member ${memberNumber} (${
+              member.first_name || "Unnamed"
+            } ${
+              member.last_name || ""
+            }):\n\nPlease fill in the following required fields:\n${fieldNames}`
+          );
+          return false;
+        }
+
+        // Validate age range
+        if (member.age < 0 || member.age > 120) {
+          showAlert.error(
+            "Invalid Age",
+            `Family ${family.family_number}, Member ${memberNumber} (${member.first_name} ${member.last_name}):\n\nAge must be between 0 and 120 years.`
+          );
+          return false;
+        }
+
+        // Validate age is a number
+        if (isNaN(member.age) || member.age === "") {
+          showAlert.error(
+            "Invalid Age",
+            `Family ${family.family_number}, Member ${memberNumber} (${member.first_name} ${member.last_name}):\n\nAge must be a valid number.`
+          );
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
+    const totalPersons = form.families.reduce((total, family) => total + family.members.length, 0);
+    
+    const confirmation = await showAlert.confirm(
+      "Confirm Incident Update",
+      `Are you sure you want to update this incident?\n\nSummary:\n• ${form.total_families} families affected\n• ${totalPersons} total persons\n• Location: ${form.location}, ${form.barangay}\n• Type: ${form.incident_type}`,
+      "Yes, Update Incident",
+      "Review Changes"
+    );
+
+    if (!confirmation.isConfirmed) return;
+
+    setIsSubmitting(true);
+
+    try {
+      showAlert.processing("Updating Incident", "Please wait while we update the incident report...");
+
+      const submissionData = {
+        ...form,
+        incident_date: new Date(form.incident_date).toISOString(),
+        affected_families: form.families.length,
+        affected_individuals: totalPersons,
+        total_families: undefined,
+      };
+
+      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API}/incidents/${incident.id}/with-families`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData),
+      });
+
+      const data = await response.json();
+      showAlert.close();
+
+      if (response.ok) {
+        showToast.success('Incident updated successfully!');
+        onSuccess();
+      } else {
+        if (response.status === 422 && data.errors) {
+          const errorMessages = Object.values(data.errors).flat();
+          const errorMessage = errorMessages.length > 0 ? errorMessages.join("\n") : "Please check all required fields and try again.";
+          showAlert.error("Validation Error", errorMessage);
+        } else if (data.validation_errors) {
+          const errorMessages = data.validation_errors.map(
+            (error) => `${error.field}: ${error.messages.join(", ")}`
+          );
+          showAlert.error("Validation Error", errorMessages.join("\n"));
+        } else {
+          const errorDetail = data.error || data.message || "Unknown error occurred";
+          showAlert.error("Error", `Failed to update incident: ${errorDetail}`);
+        }
+      }
+    } catch (error) {
+      showAlert.close();
+      showAlert.error(
+        "Connection Error",
+        "Failed to connect to server. Please check your internet connection and try again."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleCloseButtonClick = async () => {
-    await handleCloseAttempt();
+  const nextStep = () => {
+    // Validate basic information before proceeding to step 2
+    const basicFields = [
+      { field: "title", label: "Incident Title" },
+      { field: "location", label: "Location" },
+      { field: "barangay", label: "Barangay" },
+      { field: "incident_type", label: "Incident Type" },
+    ];
+
+    const missingBasicFields = basicFields.filter(
+      ({ field, label }) => !form[field] || form[field].toString().trim() === ""
+    );
+
+    if (missingBasicFields.length > 0) {
+      const fieldNames = missingBasicFields.map((f) => f.label).join(", ");
+      showAlert.error(
+        "Missing Information",
+        `Please fill in the following required fields before proceeding:\n\n${fieldNames}`
+      );
+      return;
+    }
+
+    // Simply move to the next step
+    setCurrentStep((prev) => prev + 1);
   };
 
-  useEffect(() => {
-    document.addEventListener('keydown', handleEscapeKey);
-    document.body.classList.add('modal-open');
-    document.body.style.overflow = 'hidden';
-    
-    return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.body.classList.remove('modal-open');
-      document.body.style.overflow = 'auto';
-    };
-  }, [isSubmitting, hasUnsavedChanges]);
-
-  const incidentTypes = [
-    { value: 'Flood', icon: 'fa-water', label: 'Flood' },
-    { value: 'Landslide', icon: 'fa-mountain', label: 'Landslide' },
-    { value: 'Fire', icon: 'fa-fire', label: 'Fire' },
-    { value: 'Earthquake', icon: 'fa-house-damage', label: 'Earthquake' },
-    { value: 'Vehicular', icon: 'fa-car-crash', label: 'Vehicular Accident' },
-  ];
-
-  const severityLevels = [
-    { value: 'Low', color: 'success', label: 'Low' },
-    { value: 'Medium', color: 'warning', label: 'Medium' },
-    { value: 'High', color: 'danger', label: 'High' },
-    { value: 'Critical', color: 'dark', label: 'Critical' },
-  ];
-
-  const statusOptions = [
-    { value: 'Reported', label: 'Reported' },
-    { value: 'Investigating', label: 'Investigating' },
-    { value: 'Resolved', label: 'Resolved' },
-    { value: 'Closed', label: 'Closed' },
-  ];
-
-  const getTypeIcon = (type) => {
-    const typeIcons = {
-      Flood: 'fa-water',
-      Landslide: 'fa-mountain',
-      Fire: 'fa-fire',
-      Earthquake: 'fa-house-damage',
-      Vehicular: 'fa-car-crash'
-    };
-    return typeIcons[type] || 'fa-exclamation-triangle';
+  const prevStep = () => {
+    setCurrentStep((prev) => prev - 1);
   };
+
+  // Render methods (similar to ReportModal but with existing data)
+  const renderStep1 = () => (
+    <div className="row g-3">
+      <div className="col-12">
+        <h6 className="text-primary mb-3">
+          <i className="fas fa-info-circle me-2"></i>
+          Basic Incident Information
+        </h6>
+      </div>
+
+      <div className="col-12 col-md-6">
+        <label className="form-label fw-semibold">Incident Type *</label>
+        <select
+          value={form.incident_type}
+          onChange={(e) => handleBasicInfoChange("incident_type", e.target.value)}
+          className="form-select"
+          required
+        >
+          <option value="">Select Incident Type</option>
+          {dropdownData.incident_types.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="col-12 col-md-6">
+        <label className="form-label fw-semibold">Severity Level *</label>
+        <select
+          value={form.severity}
+          onChange={(e) => handleBasicInfoChange("severity", e.target.value)}
+          className="form-select"
+          required
+        >
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Critical">Critical</option>
+        </select>
+      </div>
+
+      <div className="col-12">
+        <label className="form-label fw-semibold">Incident Title *</label>
+        <input
+          type="text"
+          value={form.title}
+          onChange={(e) => handleBasicInfoChange("title", e.target.value)}
+          className="form-control"
+          placeholder="Brief title describing the incident"
+          required
+        />
+      </div>
+
+      <div className="col-12 col-md-6">
+        <label className="form-label fw-semibold">Barangay *</label>
+        <select
+          value={form.barangay}
+          onChange={(e) => handleBasicInfoChange("barangay", e.target.value)}
+          className="form-select"
+          required
+        >
+          <option value="">Select Barangay</option>
+          {dropdownData.barangays.map((barangay) => (
+            <option key={barangay} value={barangay}>{barangay}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="col-12 col-md-6">
+        <label className="form-label fw-semibold">Purok</label>
+        <input
+          type="text"
+          value={form.purok}
+          onChange={(e) => handleBasicInfoChange("purok", e.target.value)}
+          className="form-control"
+          placeholder="Specific purok/area"
+        />
+      </div>
+
+      <div className="col-12">
+        <label className="form-label fw-semibold">Location *</label>
+        <input
+          type="text"
+          value={form.location}
+          onChange={(e) => handleBasicInfoChange("location", e.target.value)}
+          className="form-control"
+          placeholder="Specific location within barangay"
+          required
+        />
+      </div>
+
+      <div className="col-12 col-md-6">
+        <label className="form-label fw-semibold">Incident Date & Time *</label>
+        <input
+          type="datetime-local"
+          value={form.incident_date}
+          onChange={(e) => handleBasicInfoChange("incident_date", e.target.value)}
+          className="form-control"
+          required
+        />
+      </div>
+
+      <div className="col-12 col-md-6">
+        <label className="form-label fw-semibold">Number of Families *</label>
+        <input
+          type="number"
+          value={form.total_families}
+          onChange={(e) => handleBasicInfoChange("total_families", parseInt(e.target.value) || 1)}
+          className="form-control"
+          min="1"
+          max="100"
+          required
+        />
+      </div>
+
+      <div className="col-12">
+        <label className="form-label fw-semibold">Description</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => handleBasicInfoChange("description", e.target.value)}
+          className="form-control"
+          rows="3"
+          placeholder="Detailed description of the incident..."
+        />
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div>
+      <div className="row mb-4">
+        <div className="col-12">
+          <h6 className="text-primary">
+            <i className="fas fa-users me-2"></i>
+            Family Information ({form.families.length} families)
+          </h6>
+          <p className="text-muted small">
+            Update detailed information for each affected family member
+          </p>
+        </div>
+      </div>
+
+      <div className="families-container" style={{ maxHeight: "500px", overflowY: "auto" }}>
+        {form.families.map((family, familyIndex) => (
+          <div key={familyIndex} className="card mb-4 border-primary">
+            <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+              <h6 className="mb-0">
+                <i className="fas fa-home me-2"></i>
+                Family {family.family_number} ({family.members.length} members)
+              </h6>
+              <span className="badge bg-light text-dark">
+                {family.members.filter((m) => m.displaced === "Y").length} displaced
+              </span>
+            </div>
+
+            <div className="card-body">
+              {/* Family-level information - REMOVED assistance_given and remarks for barangay */}
+              <div className="row g-3 mb-4">
+                <div className="col-12 col-md-4">
+                  <label className="form-label fw-semibold">Family Size</label>
+                  <input
+                    type="number"
+                    value={family.family_size}
+                    onChange={(e) => handleFamilyChange(familyIndex, "family_size", parseInt(e.target.value) || 1)}
+                    className="form-control"
+                    min="1"
+                    disabled
+                  />
+                </div>
+              </div>
+
+              {/* Family Members */}
+              <h6 className="text-secondary mb-3">
+                Family Members 
+                <button
+                  type="button"
+                  className="btn btn-sm btn-success ms-2"
+                  onClick={() => addFamilyMember(familyIndex)}
+                >
+                  <i className="fas fa-plus me-1"></i>
+                  Add Member
+                </button>
+              </h6>
+              
+              {family.members.map((member, memberIndex) => (
+                <div key={memberIndex} className="member-card border rounded p-3 mb-3">
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="mb-0 text-dark">
+                      Member {memberIndex + 1} 
+                      {member.position_in_family && ` - ${member.position_in_family}`}
+                    </h6>
+                    {family.members.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => {
+                          removeFamilyMember(familyIndex, memberIndex);
+                          updateFamilySize(familyIndex);
+                        }}
+                      >
+                        <i className="fas fa-times"></i> Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Complete member form fields */}
+                  <div className="row g-2">
+                    {/* Name Fields */}
+                    <div className="col-12 col-md-4">
+                      <label className="form-label small fw-semibold">Last Name *</label>
+                      <input
+                        type="text"
+                        value={member.last_name}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "last_name", e.target.value)}
+                        className={`form-control form-control-sm ${
+                          !member.last_name ? "is-invalid" : "is-valid"
+                        }`}
+                        required
+                      />
+                      {!member.last_name && (
+                        <div className="invalid-feedback">Last name is required</div>
+                      )}
+                    </div>
+
+                    <div className="col-12 col-md-4">
+                      <label className="form-label small fw-semibold">First Name *</label>
+                      <input
+                        type="text"
+                        value={member.first_name}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "first_name", e.target.value)}
+                        className={`form-control form-control-sm ${
+                          !member.first_name ? "is-invalid" : "is-valid"
+                        }`}
+                        required
+                      />
+                      {!member.first_name && (
+                        <div className="invalid-feedback">First name is required</div>
+                      )}
+                    </div>
+
+                    <div className="col-12 col-md-4">
+                      <label className="form-label small fw-semibold">Middle Name</label>
+                      <input
+                        type="text"
+                        value={member.middle_name}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "middle_name", e.target.value)}
+                        className="form-control form-control-sm"
+                      />
+                    </div>
+
+                    {/* Basic Information */}
+                    <div className="col-12 col-md-4">
+                      <label className="form-label small fw-semibold">Position in Family *</label>
+                      <select
+                        value={member.position_in_family}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "position_in_family", e.target.value)}
+                        className={`form-select form-select-sm ${
+                          !member.position_in_family ? "is-invalid" : "is-valid"
+                        }`}
+                        required
+                      >
+                        <option value="">Select Position</option>
+                        {dropdownData.position_in_family.map((pos) => (
+                          <option key={pos} value={pos}>{pos}</option>
+                        ))}
+                      </select>
+                      {!member.position_in_family && (
+                        <div className="invalid-feedback">Please select position in family</div>
+                      )}
+                    </div>
+
+                    <div className="col-12 col-md-4">
+                      <label className="form-label small fw-semibold">Sex/Gender Identity *</label>
+                      <select
+                        value={member.sex_gender_identity}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "sex_gender_identity", e.target.value)}
+                        className={`form-select form-select-sm ${
+                          !member.sex_gender_identity ? "is-invalid" : "is-valid"
+                        }`}
+                        required
+                      >
+                        <option value="">Select Gender</option>
+                        {dropdownData.sex_gender_identity.map((gender) => (
+                          <option key={gender} value={gender}>{gender}</option>
+                        ))}
+                      </select>
+                      {!member.sex_gender_identity && (
+                        <div className="invalid-feedback">Please select gender identity</div>
+                      )}
+                    </div>
+
+                    <div className="col-12 col-md-4">
+                      <label className="form-label small fw-semibold">Age *</label>
+                      <input
+                        type="number"
+                        value={member.age}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "age", parseInt(e.target.value) || "")}
+                        className={`form-control form-control-sm ${
+                          !member.age || member.age < 0 || member.age > 120 ? "is-invalid" : "is-valid"
+                        }`}
+                        min="0"
+                        max="120"
+                        required
+                      />
+                      {(!member.age || member.age < 0 || member.age > 120) && (
+                        <div className="invalid-feedback">
+                          {!member.age ? "Age is required" : "Age must be between 0 and 120"}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Category and Civil Status */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label small fw-semibold">Category *</label>
+                      <select
+                        value={member.category}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "category", e.target.value)}
+                        className={`form-select form-select-sm ${
+                          !member.category ? "is-invalid" : "is-valid"
+                        }`}
+                        required
+                      >
+                        <option value="">Select Category</option>
+                        {dropdownData.categories.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      {!member.category && (
+                        <div className="invalid-feedback">Please select a category</div>
+                      )}
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <label className="form-label small fw-semibold">Civil Status *</label>
+                      <select
+                        value={member.civil_status}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "civil_status", e.target.value)}
+                        className={`form-select form-select-sm ${
+                          !member.civil_status ? "is-invalid" : "is-valid"
+                        }`}
+                        required
+                      >
+                        <option value="">Select Status</option>
+                        {dropdownData.civil_status.map((status) => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                      {!member.civil_status && (
+                        <div className="invalid-feedback">Please select civil status</div>
+                      )}
+                    </div>
+
+                    {/* Ethnicity Field with validation */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label small fw-semibold">Ethnicity *</label>
+                      <select
+                        value={member.ethnicity}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "ethnicity", e.target.value)}
+                        className={`form-select form-select-sm ${
+                          !member.ethnicity ? "is-invalid" : "is-valid"
+                        }`}
+                        required
+                      >
+                        <option value="">Select Ethnicity</option>
+                        {dropdownData.ethnicity.map((eth) => (
+                          <option key={eth} value={eth}>{eth}</option>
+                        ))}
+                      </select>
+                      {!member.ethnicity && (
+                        <div className="invalid-feedback">Please select an ethnicity</div>
+                      )}
+                    </div>
+
+                    <div className="col-12 col-md-6">
+                      <label className="form-label small fw-semibold">Displaced?</label>
+                      <select
+                        value={member.displaced}
+                        onChange={(e) => {
+                          handleMemberChange(familyIndex, memberIndex, "displaced", e.target.value);
+                          if (e.target.value === "Y") {
+                            handleFamilyChange(familyIndex, "evacuation_center", "");
+                          } else {
+                            handleFamilyChange(familyIndex, "alternative_location", "");
+                          }
+                        }}
+                        className="form-select form-select-sm"
+                      >
+                        <option value="N">No</option>
+                        <option value="Y">Yes</option>
+                      </select>
+                    </div>
+
+                    {/* Location based on displacement */}
+                    {member.displaced === "Y" ? (
+                      <div className="col-12">
+                        <label className="form-label small fw-semibold">Evacuation Center/Location</label>
+                        <input
+                          type="text"
+                          value={family.evacuation_center}
+                          onChange={(e) => handleFamilyChange(familyIndex, "evacuation_center", e.target.value)}
+                          className="form-control form-control-sm"
+                          placeholder="Name of evacuation center or location"
+                        />
+                      </div>
+                    ) : (
+                      <div className="col-12">
+                        <label className="form-label small fw-semibold">Current Location</label>
+                        <input
+                          type="text"
+                          value={family.alternative_location}
+                          onChange={(e) => handleFamilyChange(familyIndex, "alternative_location", e.target.value)}
+                          className="form-control form-control-sm"
+                          placeholder="Location where family is staying"
+                        />
+                      </div>
+                    )}
+
+                    {/* Casualty Status */}
+                    <div className="col-12 col-md-6">
+                      <label className="form-label small fw-semibold">Casualty Status</label>
+                      <select
+                        value={member.casualty}
+                        onChange={(e) => handleMemberChange(familyIndex, memberIndex, "casualty", e.target.value)}
+                        className="form-select form-select-sm"
+                      >
+                        <option value="">None</option>
+                        {dropdownData.casualty.map((status) => (
+                          <option key={status} value={status}>{status}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Vulnerable Groups */}
+                    <div className="col-12">
+                      <label className="form-label small fw-semibold">Vulnerable Groups</label>
+                      <div className="row g-1">
+                        {dropdownData.vulnerable_groups.map((group) => (
+                          <div key={group} className="col-12 col-md-4 col-lg-3">
+                            <div className="form-check">
+                              <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={member.vulnerable_groups?.includes(group) || false}
+                                onChange={(e) => {
+                                  const currentGroups = member.vulnerable_groups || [];
+                                  const newGroups = e.target.checked
+                                    ? [...currentGroups, group]
+                                    : currentGroups.filter((g) => g !== group);
+                                  handleMemberChange(familyIndex, memberIndex, "vulnerable_groups", newGroups);
+                                }}
+                              />
+                              <label className="form-check-label small">{group}</label>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* PWD Type if PWD is selected */}
+                    {member.vulnerable_groups?.includes("PWD") && (
+                      <div className="col-12">
+                        <label className="form-label small fw-semibold">PWD Type</label>
+                        <select
+                          value={member.pwd_type}
+                          onChange={(e) => handleMemberChange(familyIndex, memberIndex, "pwd_type", e.target.value)}
+                          className="form-select form-select-sm"
+                        >
+                          <option value="">Select PWD Type</option>
+                          {dropdownData.pwd_types.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <Portal>
-      <div 
-        className="modal fade show d-block"
-        style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
-        onClick={handleBackdropClick}
-        tabIndex="-1"
-      >
-        <div className="modal-dialog modal-dialog-centered modal-lg mx-3 mx-sm-auto">
-          <div 
-            className="modal-content border-0"
-            style={{ 
-              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-            }}
-          >
-            {/* Header */}
-            <div 
+      <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <div className="modal-dialog modal-dialog-centered modal-xl">
+          <div className="modal-content border-0" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <div
               className="modal-header border-0 text-white"
               style={{
                 background: 'linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%)',
@@ -304,340 +864,71 @@ const confirmation = await showAlert.confirm(
               <h5 className="modal-title fw-bold">
                 <i className="fas fa-edit me-2"></i>
                 Edit Incident
+                <small className="ms-2 opacity-75">Step {currentStep} of 2</small>
               </h5>
               <button 
                 type="button" 
                 className="btn-close btn-close-white" 
-                onClick={handleCloseButtonClick}
+                onClick={onClose}
                 disabled={isSubmitting}
-                aria-label="Close"
               ></button>
             </div>
-            
-            <form ref={formRef} onSubmit={handleSubmit}>
-              <div 
-                className="modal-body bg-light" 
-                style={{ 
-                  maxHeight: '60vh', 
-                  overflowY: 'auto',
-                }}
-              >
-                <div className="row g-3">
-                  {/* Incident Type */}
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark">Incident Type *</label>
-                    <select 
-                      name="incident_type"
-                      value={form.incident_type}
-                      onChange={handleInputChange}
-                      className="form-select bg-white"
-                      required
-                      disabled={isSubmitting}
-                    >
-                      {incidentTypes.map(type => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
 
-                  {/* Severity Level */}
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark">Severity Level *</label>
-                    <select 
-                      name="severity"
-                      value={form.severity}
-                      onChange={handleInputChange}
-                      className="form-select bg-white"
-                      required
-                      disabled={isSubmitting}
-                    >
-                      {severityLevels.map(level => (
-                        <option key={level.value} value={level.value}>
-                          {level.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Status (Admin only) - REMOVED for barangay users */}
-                  {user.role === 'admin' && (
-                    <div className="col-12 col-md-6">
-                      <label className="form-label fw-semibold text-dark">Status</label>
-                      <select 
-                        name="status"
-                        value={form.status}
-                        onChange={handleInputChange}
-                        className="form-select bg-white"
-                        disabled={isSubmitting}
-                      >
-                        {statusOptions.map(status => (
-                          <option key={status.value} value={status.value}>
-                            {status.label}
-                          </option>
-                        ))}
-                      </select>
-                      <small className="text-muted">Only administrators can change incident status</small>
-                    </div>
-                  )}
-
-                  {/* Title */}
-                  <div className="col-12">
-                    <label className="form-label fw-semibold text-dark">Incident Title *</label>
-                    <input
-                      type="text"
-                      name="title"
-                      value={form.title}
-                      onChange={handleInputChange}
-                      className="form-control bg-white"
-                      placeholder="Brief title describing the incident"
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  {/* Location */}
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark">Location *</label>
-                    <input
-                      type="text"
-                      name="location"
-                      value={form.location}
-                      onChange={handleInputChange}
-                      className="form-control bg-white"
-                      placeholder="Specific location within barangay"
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  {/* Date & Time */}
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark">Incident Date & Time *</label>
-                    <input
-                      type="datetime-local"
-                      name="incident_date"
-                      value={form.incident_date}
-                      onChange={handleInputChange}
-                      className="form-control bg-white"
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <div className="col-12">
-                    <label className="form-label fw-semibold text-dark">Description *</label>
-                    <textarea
-                      name="description"
-                      value={form.description}
-                      onChange={handleInputChange}
-                      className="form-control bg-white"
-                      rows="3"
-                      placeholder="Detailed description of the incident..."
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-
-                  {/* Affected Numbers */}
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark">Affected Families *</label>
-                    <input
-                      type="number"
-                      name="affected_families"
-                      value={form.affected_families}
-                      onChange={handleInputChange}
-                      className={`form-control bg-white ${formErrors.affected_families ? 'is-invalid' : ''}`}
-                      min="1"
-                      placeholder="Enter number of affected families"
-                      required
-                      disabled={isSubmitting}
-                    />
-                    {formErrors.affected_families && (
-                      <div className="invalid-feedback">
-                        {formErrors.affected_families}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-12 col-md-6">
-                    <label className="form-label fw-semibold text-dark">Affected Individuals *</label>
-                    <input
-                      type="number"
-                      name="affected_individuals"
-                      value={form.affected_individuals}
-                      onChange={handleInputChange}
-                      className={`form-control bg-white ${formErrors.affected_individuals ? 'is-invalid' : ''}`}
-                      min="1"
-                      placeholder="Enter number of affected individuals"
-                      required
-                      disabled={isSubmitting}
-                    />
-                    {formErrors.affected_individuals && (
-                      <div className="invalid-feedback">
-                        {formErrors.affected_individuals}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Casualties Section */}
-                  <div className="col-12">
-                    <div className="card border-0 bg-white">
-                      <div 
-                        className="card-header border-bottom py-3 bg-white"
-                        style={{ 
-                          borderColor: 'rgba(51, 107, 49, 0.2)'
-                        }}
-                      >
-                        <h6 className="mb-0 fw-semibold text-dark">
-                          <i className="fas fa-heartbeat me-2 text-danger"></i>
-                          Casualties (Optional)
-                        </h6>
-                      </div>
-                      <div className="card-body p-3 bg-white">
-                        <div className="row g-3">
-                          <div className="col-12 col-md-4">
-                            <label className="form-label fw-semibold text-dark">
-                              <i className="fas fa-skull-crossbones me-1 text-muted"></i>
-                              Deceased
-                            </label>
-                            <input
-                              type="number"
-                              value={form.casualties.dead}
-                              onChange={(e) => handleCasualtyChange('dead', e.target.value)}
-                              className="form-control bg-white"
-                              min="0"
-                              placeholder="0"
-                              disabled={isSubmitting}
-                            />
-                          </div>
-                          <div className="col-12 col-md-4">
-                            <label className="form-label fw-semibold text-dark">
-                              <i className="fas fa-user-injured me-1 text-warning"></i>
-                              Injured
-                            </label>
-                            <input
-                              type="number"
-                              value={form.casualties.injured}
-                              onChange={(e) => handleCasualtyChange('injured', e.target.value)}
-                              className="form-control bg-white"
-                              min="0"
-                              placeholder="0"
-                              disabled={isSubmitting}
-                            />
-                          </div>
-                          <div className="col-12 col-md-4">
-                            <label className="form-label fw-semibold text-dark">
-                              <i className="fas fa-search me-1 text-info"></i>
-                              Missing
-                            </label>
-                            <input
-                              type="number"
-                              value={form.casualties.missing}
-                              onChange={(e) => handleCasualtyChange('missing', e.target.value)}
-                              className="form-control bg-white"
-                              min="0"
-                              placeholder="0"
-                              disabled={isSubmitting}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Admin Notes (Admin only) */}
-                  {user.role === 'admin' && (
-                    <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">Admin Notes</label>
-                      <textarea
-                        name="admin_notes"
-                        value={form.admin_notes}
-                        onChange={handleInputChange}
-                        className="form-control bg-white"
-                        rows="3"
-                        placeholder="Administrative notes..."
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  )}
-
-                  {/* Response Actions (Admin only) */}
-                  {user.role === 'admin' && (
-                    <div className="col-12">
-                      <label className="form-label fw-semibold text-dark">Response Actions</label>
-                      <textarea
-                        name="response_actions"
-                        value={form.response_actions}
-                        onChange={handleInputChange}
-                        className="form-control bg-white"
-                        rows="3"
-                        placeholder="Response actions taken..."
-                        disabled={isSubmitting}
-                      />
-                    </div>
-                  )}
-                </div>
+            {/* Remove form tag completely to prevent any form submission issues */}
+            <div>
+              <div className="modal-body bg-light" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                {currentStep === 1 ? renderStep1() : renderStep2()}
               </div>
-              
-              {/* Footer */}
+
               <div className="modal-footer border-top bg-white">
-                <button 
-                  type="button" 
-                  className="btn btn-outline-secondary"
-                  onClick={handleCloseButtonClick}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </button>
-<button 
-  type="submit" 
-  className="btn fw-semibold position-relative"
-  disabled={isSubmitting}
-  style={{
-    backgroundColor: isSubmitting ? 'var(--bs-secondary)' : 'var(--btn-primary-bg)',
-    borderColor: isSubmitting ? 'var(--bs-secondary)' : 'var(--btn-primary-bg)',
-    color: 'white',
-    transition: 'all 0.3s ease',
-    minWidth: '140px'
-  }}
-  onMouseEnter={(e) => {
-    if (!isSubmitting) {
-      e.target.style.backgroundColor = '#1a3d15';
-      e.target.style.borderColor = '#1a3d15';
-      e.target.style.transform = 'translateY(-1px)';
-      e.target.style.boxShadow = '0 4px 8px rgba(26, 61, 21, 0.3)';
-    }
-  }}
-  onMouseLeave={(e) => {
-    if (!isSubmitting) {
-      e.target.style.backgroundColor = 'var(--btn-primary-bg)';
-      e.target.style.borderColor = 'var(--btn-primary-bg)';
-      e.target.style.transform = 'translateY(0)';
-      e.target.style.boxShadow = 'none';
-    }
-  }}
-  onMouseDown={(e) => {
-    if (!isSubmitting) {
-      e.target.style.transform = 'translateY(0)';
-    }
-  }}
->
-  {isSubmitting ? (
-    <>
-      <span className="spinner-border spinner-border-sm me-2"></span>
-      Updating...
-    </>
-  ) : (
-    <>
-      <i className="fas fa-save me-2"></i>
-      Update Incident
-    </>
-  )}
-</button>
+                {currentStep === 1 ? (
+                  <>
+                    <button 
+                      type="button" 
+                      className="btn btn-outline-secondary" 
+                      onClick={onClose}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button"
+                      className="btn btn-primary" 
+                      onClick={nextStep}
+                    >
+                      Next <i className="fas fa-arrow-right ms-2"></i>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      type="button"
+                      className="btn btn-outline-secondary" 
+                      onClick={prevStep}
+                    >
+                      <i className="fas fa-arrow-left me-2"></i> Back
+                    </button>
+                    <button 
+                      type="button"
+                      className="btn btn-primary" 
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2"></span>
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-save me-2"></i>
+                          Update Incident
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
-            </form>
+            </div>
           </div>
         </div>
       </div>
